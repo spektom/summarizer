@@ -1,0 +1,12 @@
+{
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "name": "PageSaver",
+  "permissions": [
+    "<all_urls>",
+    "tabs"
+  ],
+  "version": "1.0.0",
+  "manifest_version": 2
+}

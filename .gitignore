@@ -1,0 +1,8 @@
+*.pyc
+__pycache__/
+venv/
+*.sqlite
+*.tar.bz2
+*.xpi
+firefox/.home
+firefox/firefox
