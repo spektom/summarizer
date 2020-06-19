@@ -1,4 +1,4 @@
 #!/bin/bash -eu
 
 HOME=$(pwd)/.home
-./firefox/firefox --new-instance "$@"
+exec ./firefox/firefox --new-instance "$@"
