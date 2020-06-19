@@ -25,12 +25,12 @@ else
 
   echo "Patching omni.ja"
   cp firefox/omni.ja .
-  ./optimizejars.py --deoptimize /tmp/ ./ ./
+  ./optimizejars.py --deoptimize /tmp/ ./ ./ >/dev/null
   unzip -qq -d omni omni.ja
   sed -i 's|return this.matcher.matchesWindow(window);|return true; //\0|' omni/modules/ExtensionContent.jsm
   (cd omni ; zip -qr9XD ../omni.ja *)
   rm -rf omni
-  ./optimizejars.py --optimize /tmp/ ./ ./
+  ./optimizejars.py --optimize /tmp/ ./ ./ >/dev/null
   mv omni.ja firefox/
 
   echo "Removing old config"

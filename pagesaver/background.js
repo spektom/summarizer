@@ -1,52 +1,64 @@
-setInterval(processNextTask, 10000);
+setInterval(processNextUri, 10000);
 
-function fetchNextTask(callback) {
+function fetchNextUri(callback) {
   function reqListener() {
     if (this.status == 200) {
-      task = JSON.parse(this.responseText);
-      callback(task);
-    } else {
-      console.error(this.responseText);
+      response = JSON.parse(this.responseText);
+      callback(response.uri, response.id);
+    } else if (this.status > 204) {
+      console.error(this.statusText);
     }
   }
 
   var req = new XMLHttpRequest();
   req.addEventListener('load', reqListener);
-  req.open('GET', 'http://localhost:5000/tasks/next?' + new Date().getTime());
+  req.open('GET', 'http://localhost:5000/nexturi?_t=' + new Date().getTime());
   req.send();
+
 }
 
-function sendTaskUpdate(task) {
+function sendArticleUpdate(content) {
   function reqListener() {
     if (this.status != 200) {
-      console.error(this.responseText);
+      console.error(this.statusText);
     }
   }
 
   var req = new XMLHttpRequest();
   req.addEventListener('load', reqListener);
-  req.open('POST', 'http://localhost:5000/tasks/update');
+  req.open('POST', 'http://localhost:5000/articles/update');
   req.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-  req.send(JSON.stringify(task));
+  req.send(JSON.stringify(content));
 }
 
-function onTabOpen(tab) {
+function requestContent(tab, articleId) {
+  function onError(error) {
+    console.error(error);
+    browser.tabs.remove(tab.id);
+  }
+
   browser.tabs.executeScript(tab.id, {
     file: 'content.js'
-  }).catch(console.error);
+  }).then(() => {
+    browser.tabs.sendMessage(tab.id, articleId).catch(onError);
+  }, onError);
 }
 
-function processNextTask() {
-  fetchNextTask(function(task) {
+function processNextUri() {
+  fetchNextUri((uri, articleId) => {
     browser.tabs.create({
       openInReaderMode: true,
-      url: task.uri
-    }).then(onTabOpen, console.error);
+      url: uri
+    }).then((tab) => {
+      requestContent(tab, {
+        articleId: articleId
+      });
+    }, console.error);
   });
 }
 
 function onContentReceived(content, sender) {
-  sendTaskUpdate({'content': content.html});
+  sendArticleUpdate(content);
   browser.tabs.remove(sender.tab.id);
 }
 
