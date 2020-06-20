@@ -27,4 +27,27 @@ class Article(db.Model):
     html = db.Column(db.Text)
 
 
-db.create_all()
+def init_db():
+    db.create_all()
+    if Feed.query.count() == 0:
+        for feed in [
+                Feed(uri='https://feeds.a.dj.com/rss/RSSWSJD.xml',
+                     name='WSJ',
+                     category='Technology: What\'s News'),
+                Feed(uri='https://www.theverge.com/tech/rss/index.xml',
+                     name='The Verge',
+                     category='Tech Posts'),
+                Feed(uri='https://www.zdnet.com/news/rss.xml',
+                     name='ZDNet',
+                     category='Latest News'),
+                Feed(uri='https://venturebeat.com/feed/',
+                     name='VentureBeat',
+                     category='Latest News'),
+                Feed(
+                    uri=
+                    'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',
+                    name='NYT',
+                    category='Technology')
+        ]:
+            db.session.add(feed)
+        db.session.commit()
