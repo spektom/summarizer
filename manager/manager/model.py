@@ -62,7 +62,21 @@ def init_db():
                      category='All Content'),
                 Feed(uri='https://www.thewrap.com/category/tech/feed/',
                      name='TheWrap',
-                     category='TheWrapTech')
+                     category='TheWrapTech'),
+                Feed(uri='https://www.techrepublic.com/rssfeeds/articles/',
+                     name='TechRepublic',
+                     category='Articles'),
+                Feed(uri='https://www.businessinsider.com/sai/rss',
+                     name='Business Insider',
+                     category='Tech Insider'),
+                Feed(uri=
+                     'https://www.wired.com/feed/category/business/latest/rss',
+                     name='Wired',
+                     category='Business'),
+                Feed(uri=
+                     'https://www.wired.com/feed/category/security/latest/rss',
+                     name='Wired',
+                     category='Security')
         ]:
             db.session.add(feed)
         db.session.commit()

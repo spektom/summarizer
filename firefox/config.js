@@ -5,5 +5,6 @@ pref("browser.defaultbrowser.notificationbar", false);
 pref("browser.shell.checkDefaultBrowser", false);
 pref("browser.tabs.warnOnClose", false);
 pref("browser.warnOnQuit", false);
+pref("dom.webnotifications.enabled", false);
 pref("identity.fxaccounts.enabled", false);
 pref("xpinstall.signatures.required", false);

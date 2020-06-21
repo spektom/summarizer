@@ -1,4 +1,5 @@
 import feedparser
+import logging
 
 from time import mktime
 from datetime import datetime, timedelta
@@ -55,4 +56,12 @@ def article_update():
     article.title = request.json['title']
     article.status = 'D'
     db.session.commit()
+    return '', 200
+
+
+@app.route('/pagesaver/log', methods=['POST'])
+def pagesaver_log():
+    app.logger.log(
+        getattr(logging, request.json['level']),
+        f"<PageSaver> [{request.json['ts']}] {request.json['message']}")
     return '', 200

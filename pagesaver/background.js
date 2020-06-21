@@ -1,50 +1,77 @@
 setInterval(processNextUri, 30000);
 
+let managerUri = 'http://localhost:5000';
+let maxOpenTabs = 5;
 let tabStates = {};
 
-function fetchNextUri(callback) {
-  function reqListener() {
-    if (this.status === 200) {
-      let response = JSON.parse(this.responseText);
-      callback(response.uri, response.id);
-    } else if (this.status > 204) {
-      console.error(this.statusText);
-    }
+function managerGet(api, callback) {
+  let xhr = new XMLHttpRequest();
+  xhr.onload = () => {
+    callback(xhr);
   }
+  xhr.open('GET', managerUri + api);
+  xhr.send();
+}
 
-  let req = new XMLHttpRequest();
-  req.addEventListener('load', reqListener);
-  req.open('GET', 'http://localhost:5000/nexturi?_t=' + new Date().getTime());
-  req.send();
+function managerPost(api, content, callback) {
+  let xhr = new XMLHttpRequest();
+  xhr.onload = () => {
+    callback(xhr);
+  }
+  xhr.open('POST', managerUri + api);
+  xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+  xhr.send(JSON.stringify(content));
+}
+
+function fetchNextUri(callback) {
+  managerGet('/nexturi', (xhr) => {
+    if (xhr.status === 200) {
+      let article = JSON.parse(xhr.responseText);
+      callback(article.uri, article.id);
+    } else if (xhr.status > 204) {
+      console.error(xhr.statusText);
+    }
+  });
 }
 
 function sendArticleUpdate(content) {
-  function reqListener() {
-    if (this.status !== 200) {
-      console.error(this.statusText);
+  managerPost('/articles/update', content, (xhr) => {
+    if (xhr.status !== 200) {
+      console.error(xhr.statusText);
     }
-  }
+  });
+}
 
-  let req = new XMLHttpRequest();
-  req.addEventListener('load', reqListener);
-  req.open('POST', 'http://localhost:5000/articles/update');
-  req.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-  req.send(JSON.stringify(content));
+function log(message, level) {
+  if (!level) level = 'INFO';
+  managerPost('/pagesaver/log', {
+    level: level,
+    message: message,
+    ts: new Date().toISOString()
+  }, (xhr) => {
+    if (xhr.status !== 200) {
+      console.error(xhr.statusText);
+    }
+  });
 }
 
 function processNextUri() {
-  fetchNextUri((uri, articleId) => {
-    console.log(`Received new URI to process: ${uri}`);
-    browser.tabs.create({
-      url: uri
-    }).then((tab) => {
-      console.log(`Tab ${tab.id} created`);
-      tabStates[tab.id] = {
-        state: 'created',
-        articleId: articleId
-      };
-    }, console.error);
-  });
+  if (Object.keys(tabStates) >= maxOpenTabs) {
+    log(`Max number of tabs (${maxOpenTabs}) is open already`, 'WARN');
+  } else {
+    fetchNextUri((uri, articleId) => {
+      log(`Received new URI to process: ${uri}`);
+      browser.tabs.create({
+        url: uri
+      }).then((tab) => {
+        log(`Tab #${tab.id} created for article #${articleId}`);
+        tabStates[tab.id] = {
+          state: 'created',
+          articleId: articleId
+        };
+      }, console.error);
+    });
+  }
 }
 
 function onTabUpdated(tabId, changeInfo, tabInfo) {
@@ -58,14 +85,14 @@ function onTabUpdated(tabId, changeInfo, tabInfo) {
   if (typeof(tabState) !== 'undefined' && changeInfo.status === 'complete') {
     if (tabState.state === 'in-reader') {
       tabState.state = 'loaded';
-      console.log(`Tab ${tabId} is in reader mode now, injecting content script`);
+      log(`Tab #${tabId} is in reader mode now, injecting content script`);
       browser.tabs.executeScript(tabId, {
         file: 'content.js'
       }).catch(onError);
     }
     if (tabState.state === 'created') {
       tabState.state = 'in-reader';
-      console.log(`Tab ${tabId} is loaded, toggling reader mode`);
+      log(`Tab #${tabId} is loaded, toggling reader mode`);
       browser.tabs.toggleReaderMode(tabId).catch(onError);
     }
   }
@@ -73,7 +100,7 @@ function onTabUpdated(tabId, changeInfo, tabInfo) {
 
 function onContentReceived(content, sender) {
   tabId = sender.tab.id;
-  console.log(`Content received from tab ${tabId}`);
+  log(`Content received from tab ${tabId}`);
   content.id = tabStates[tabId].articleId;
   delete tabStates[tabId];
   browser.tabs.remove(tabId);
