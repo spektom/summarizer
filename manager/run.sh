@@ -1,11 +1,12 @@
 #!/bin/bash -eu
 
 schedule_refresh() {
+  set +e
   sleep 5
   while true
   do
     curl -sSf http://localhost:5000/feeds/refresh > /dev/null
-    sleep 1800
+    sleep 900
   done
 }
 

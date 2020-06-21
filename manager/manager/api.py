@@ -10,17 +10,20 @@ from .model import Feed, Article
 @app.route('/feeds/refresh', methods=['GET'])
 def feeds_refresh():
     for feed in Feed.query.all():
-        f = feedparser.parse(feed.uri)
-        for entry in sorted(f.entries, key=lambda e: e.published_parsed):
-            publish_time = datetime.fromtimestamp(
-                mktime(entry.published_parsed))
-            if feed.last_publish_time is None or feed.last_publish_time < publish_time:
-                db.session.add(
-                    Article(feed_id=feed.id,
-                            uri=entry.link,
-                            summary=entry.summary,
-                            status='N'))
-                feed.last_publish_time = publish_time
+        try:
+            f = feedparser.parse(feed.uri)
+            for entry in sorted(f.entries, key=lambda e: e.published_parsed):
+                publish_time = datetime.fromtimestamp(
+                    mktime(entry.published_parsed))
+                if feed.last_publish_time is None or feed.last_publish_time < publish_time:
+                    db.session.add(
+                        Article(feed_id=feed.id,
+                                uri=entry.link,
+                                summary=entry.summary,
+                                status='N'))
+                    feed.last_publish_time = publish_time
+        except:
+            app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
     db.session.commit()
     return '', 204
 

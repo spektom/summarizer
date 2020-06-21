@@ -47,7 +47,22 @@ def init_db():
                     uri=
                     'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',
                     name='NYT',
-                    category='Technology')
+                    category='Technology'),
+                Feed(uri='https://feeds.feedburner.com/TheHackersNews',
+                     name='THN',
+                     category='Latest News'),
+                Feed(uri='https://thenewstack.io/blog/feed',
+                     name='The New Stack',
+                     category='Recent Stories'),
+                Feed(uri='https://www.techradar.com/rss',
+                     name='TechRadar',
+                     category='All News'),
+                Feed(uri='https://feeds.feedburner.com/TechCrunch',
+                     name='TechCrunch',
+                     category='All Content'),
+                Feed(uri='https://www.thewrap.com/category/tech/feed/',
+                     name='TheWrap',
+                     category='TheWrapTech')
         ]:
             db.session.add(feed)
         db.session.commit()
