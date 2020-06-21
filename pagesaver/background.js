@@ -24,7 +24,7 @@ function managerPost(api, content, callback) {
 }
 
 function fetchNextUri(callback) {
-  managerGet('/nexturi', (xhr) => {
+  managerGet('/tasks/next', (xhr) => {
     if (xhr.status === 200) {
       let article = JSON.parse(xhr.responseText);
       callback(article.uri, article.id);
@@ -55,8 +55,12 @@ function log(message, level) {
   });
 }
 
+function logError(error) {
+  log(error, 'ERROR');
+}
+
 function processNextUri() {
-  if (Object.keys(tabStates) >= maxOpenTabs) {
+  if (Object.keys(tabStates).length >= maxOpenTabs) {
     log(`Max number of tabs (${maxOpenTabs}) is open already`, 'WARN');
   } else {
     fetchNextUri((uri, articleId) => {
@@ -69,16 +73,16 @@ function processNextUri() {
           state: 'created',
           articleId: articleId
         };
-      }, console.error);
+      }, logError);
     });
   }
 }
 
-function onTabUpdated(tabId, changeInfo, tabInfo) {
+function onTabUpdated(tabId, changeInfo, tab) {
   function onError(error) {
-    console.error(error);
     delete tabStates[tabId];
     browser.tabs.remove(tabId);
+    logError(error);
   }
 
   let tabState = tabStates[tabId];
@@ -92,8 +96,15 @@ function onTabUpdated(tabId, changeInfo, tabInfo) {
     }
     if (tabState.state === 'created') {
       tabState.state = 'in-reader';
-      log(`Tab #${tabId} is loaded, toggling reader mode`);
-      browser.tabs.toggleReaderMode(tabId).catch(onError);
+      if (tab.isArticle) {
+        log(`Tab #${tabId} is loaded, toggling reader mode`);
+        browser.tabs.toggleReaderMode(tabId).catch(onError);
+      } else {
+        sendArticleUpdate({
+          id: tabStates[tabId].articleId
+        });
+        onError(`Tab #${tabId} is loaded, but the URI does not refer to an article: ${tab.url}`);
+      }
     }
   }
 }

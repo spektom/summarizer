@@ -8,6 +8,8 @@ class Feed(db.Model):
     uri = db.Column(db.Text, nullable=False, unique=True)
     name = db.Column(db.Text, nullable=False)
     category = db.Column(db.Text, nullable=False)
+    etag = db.Column(db.Text)
+    modified = db.Column(db.Text)
 
 
 class Article(db.Model):
@@ -43,11 +45,9 @@ def init_db():
                 Feed(uri='https://venturebeat.com/feed/',
                      name='VentureBeat',
                      category='Latest News'),
-                Feed(
-                    uri=
-                    'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',
-                    name='NYT',
-                    category='Technology'),
+                Feed(uri='https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml', \
+                     name='NYT',
+                     category='Technology'),
                 Feed(uri='https://feeds.feedburner.com/TheHackersNews',
                      name='THN',
                      category='Latest News'),
@@ -69,14 +69,21 @@ def init_db():
                 Feed(uri='https://www.businessinsider.com/sai/rss',
                      name='Business Insider',
                      category='Tech Insider'),
-                Feed(uri=
-                     'https://www.wired.com/feed/category/business/latest/rss',
+                Feed(uri='https://www.wired.com/feed/category/business/latest/rss', \
                      name='Wired',
                      category='Business'),
-                Feed(uri=
-                     'https://www.wired.com/feed/category/security/latest/rss',
+                Feed(uri='https://www.wired.com/feed/category/security/latest/rss', \
                      name='Wired',
-                     category='Security')
+                     category='Security'),
+                Feed(uri='https://www.technologyreview.com/feed/',
+                     name='MIT Technology Review',
+                     category='All Stories'),
+                Feed(uri='http://feeds.washingtonpost.com/rss/rss_innovations',
+                     name='Washington Post',
+                     category='Innovations'),
+                Feed(uri='http://feeds.bbci.co.uk/news/technology/rss.xml',
+                     name='BBC',
+                     category='Technology')
         ]:
             db.session.add(feed)
         db.session.commit()

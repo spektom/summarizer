@@ -12,7 +12,9 @@ from .model import Feed, Article
 def feeds_refresh():
     for feed in Feed.query.all():
         try:
-            f = feedparser.parse(feed.uri)
+            f = feedparser.parse(feed.uri,
+                                 etag=feed.etag,
+                                 modified=feed.modified)
             for entry in sorted(f.entries, key=lambda e: e.published_parsed):
                 publish_time = datetime.fromtimestamp(
                     mktime(entry.published_parsed))
@@ -23,14 +25,28 @@ def feeds_refresh():
                                 summary=entry.summary,
                                 status='N'))
                     feed.last_publish_time = publish_time
+            if hasattr(f, 'etag'):
+                feed.etag = f.etag
+            if hasattr(f, 'modified'):
+                feed.modified = f.modified
         except:
             app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
     db.session.commit()
     return '', 204
 
 
-@app.route('/nexturi', methods=['GET'])
-def nexturi():
+@app.route('/tasks/reschedule', methods=['GET'])
+def tasks_reschedule():
+    hour_ago = datetime.utcnow() - timedelta(hours=1)
+    for article in Article.query.filter(
+            Article.status == 'Q' and Article.update_time < hour_ago).all():
+        article.status = 'N'
+    db.session.commit()
+    return '', 204
+
+
+@app.route('/tasks/next', methods=['GET'])
+def tasks_next():
     article = Article.query.filter(Article.status == 'N').order_by(
         Article.create_time).first()
     if article is not None:
@@ -52,9 +68,12 @@ def articles_add():
 @app.route('/articles/update', methods=['POST'])
 def article_update():
     article = Article.query.get(request.json['id'])
-    article.html = request.json['html']
-    article.title = request.json['title']
-    article.status = 'D'
+    if 'html' not in request.json:
+        article.status = 'E'
+    else:
+        article.html = request.json['html']
+        article.title = request.json['title']
+        article.status = 'D'
     db.session.commit()
     return '', 200
 

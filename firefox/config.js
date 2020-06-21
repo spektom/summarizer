@@ -2,9 +2,15 @@
 pref("app.update.auto", false);
 pref("browser.aboutwelcome.enabled", false);
 pref("browser.defaultbrowser.notificationbar", false);
+pref("browser.reader.detectedFirstArticle", false);
 pref("browser.shell.checkDefaultBrowser", false);
 pref("browser.tabs.warnOnClose", false);
+pref("browser.usedOnWindows10", true);
 pref("browser.warnOnQuit", false);
+pref("datareporting.healthreport.service.firstRun", false);
 pref("dom.webnotifications.enabled", false);
+pref("extensions.htmlaboutaddons.recommendations.enabled", false);
 pref("identity.fxaccounts.enabled", false);
+pref("startup.homepage_override_url", "");
+pref("toolkit.telemetry.reportingpolicy.firstRun", false);
 pref("xpinstall.signatures.required", false);
