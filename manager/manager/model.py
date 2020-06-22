@@ -47,6 +47,8 @@ def init_db():
                 Feed(uri='https://www.businessinsider.com/sai/rss', name='Business Insider', category='Tech Insider'),
                 Feed(uri='https://www.cnet.com/rss/news/', name='CNET', category='News'),
                 Feed(uri='https://www.computerweekly.com/rss/All-Computer-Weekly-content.xml', name='ComputerWeekly', category='All Content'),
+                Feed(uri='https://www.economist.com/business/rss.xml', name='The Economist', category='Business'),
+                Feed(uri='https://www.economist.com/science-and-technology/rss.xml', name='The Economist', category='Science and Technology'),
                 Feed(uri='https://www.eweek.com/rss.xml', name='eWEEK', category='Last Articles'),
                 Feed(uri='https://www.digitaltrends.com/news/feed/', name='Digital Trends', category='Tech News'),
                 Feed(uri='https://www.geekwire.com/feed/', name='GeekWire', category='News'),

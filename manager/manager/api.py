@@ -29,9 +29,9 @@ def feeds_refresh():
                 feed.etag = f.etag
             if hasattr(f, 'modified'):
                 feed.modified = f.modified
+            db.session.commit()
         except:
             app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
-    db.session.commit()
     return '', 204
 
 

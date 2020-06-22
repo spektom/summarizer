@@ -15,5 +15,6 @@ db = SQLAlchemy(app)
 
 from .model import init_db
 from .api import *
+from .views import *
 
 init_db()
