@@ -40,11 +40,11 @@ def tasks_reschedule():
     hour_ago = datetime.utcnow() - timedelta(hours=1)
     for article in Article.query.filter(
             Article.status == 'Q' and Article.update_time < hour_ago).all():
+        article.retries += 1
         if article.retries < 3:
             article.status = 'N'
         else:
             article.status = 'E'
-        article.retries += 1
     db.session.commit()
     return '', 204
 
