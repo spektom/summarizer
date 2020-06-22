@@ -22,7 +22,7 @@ def feeds_refresh():
                     db.session.add(
                         Article(feed_id=feed.id,
                                 uri=entry.link,
-                                summary=entry.summary,
+                                summary=entry.summary if hasattr(entry, 'summary') else None, \
                                 status='N'))
                     feed.last_publish_time = publish_time
             if hasattr(f, 'etag'):
@@ -38,9 +38,11 @@ def feeds_refresh():
 @app.route('/tasks/reschedule', methods=['GET'])
 def tasks_reschedule():
     hour_ago = datetime.utcnow() - timedelta(hours=1)
-    for article in Article.query.filter(
-            Article.status == 'Q' and Article.update_time < hour_ago).all():
+    for article in Article.query.filter(Article.status == 'Q'
+                                        and Article.update_time < hour_ago
+                                        and Article.retries < 3).all():
         article.status = 'N'
+        article.retries += 1
     db.session.commit()
     return '', 204
 

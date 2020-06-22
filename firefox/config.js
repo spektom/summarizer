@@ -11,6 +11,7 @@ pref("datareporting.healthreport.service.firstRun", false);
 pref("dom.webnotifications.enabled", false);
 pref("extensions.htmlaboutaddons.recommendations.enabled", false);
 pref("identity.fxaccounts.enabled", false);
+pref("image.animation_mode", "none");
 pref("startup.homepage_override_url", "");
 pref("toolkit.telemetry.reportingpolicy.firstRun", false);
 pref("xpinstall.signatures.required", false);

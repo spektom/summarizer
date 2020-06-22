@@ -1,8 +1,7 @@
-setInterval(processNextUri, 30000);
-
 let managerUri = 'http://localhost:5000';
 let maxOpenTabs = 5;
-let tabStates = {};
+let newTaskFetchIntervalSecs = 10;
+let tabStates = {}; // holds global state of open tabs, their respective article ID, etc.
 
 function managerGet(api, callback) {
   let xhr = new XMLHttpRequest();
@@ -86,25 +85,26 @@ function onTabUpdated(tabId, changeInfo, tab) {
   }
 
   let tabState = tabStates[tabId];
+
+  // State machine depending on current tab state:
   if (typeof(tabState) !== 'undefined' && changeInfo.status === 'complete') {
-    if (tabState.state === 'in-reader') {
+    if (tabState.state === 'created') {
+      tabState.state = 'in-reader';
+      if (tab.isArticle) {
+        // Switch to reader mode
+        log(`Tab #${tabId} is loaded, toggling reader mode`);
+        browser.tabs.toggleReaderMode(tabId).catch(onError);
+      } else {
+        // Not an article
+        onError(`Tab #${tabId} is loaded, but it doesn't seem to be an article: ${tab.url}`);
+      }
+    } else if (tabState.state === 'in-reader') {
+      // Finished content retrieval
       tabState.state = 'loaded';
       log(`Tab #${tabId} is in reader mode now, injecting content script`);
       browser.tabs.executeScript(tabId, {
         file: 'content.js'
       }).catch(onError);
-    }
-    if (tabState.state === 'created') {
-      tabState.state = 'in-reader';
-      if (tab.isArticle) {
-        log(`Tab #${tabId} is loaded, toggling reader mode`);
-        browser.tabs.toggleReaderMode(tabId).catch(onError);
-      } else {
-        sendArticleUpdate({
-          id: tabStates[tabId].articleId
-        });
-        onError(`Tab #${tabId} is loaded, but the URI does not refer to an article: ${tab.url}`);
-      }
     }
   }
 }
@@ -120,3 +120,5 @@ function onContentReceived(content, sender) {
 
 browser.tabs.onUpdated.addListener(onTabUpdated);
 browser.runtime.onMessage.addListener(onContentReceived);
+
+setInterval(processNextUri, newTaskFetchIntervalSecs * 1000);
