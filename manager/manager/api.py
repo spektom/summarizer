@@ -4,6 +4,7 @@ import logging
 from time import mktime
 from datetime import datetime, timedelta
 from flask import request, jsonify
+from sqlalchemy import exc
 from .app import app, db
 from .model import Feed, Article
 
@@ -12,23 +13,32 @@ from .model import Feed, Article
 def feeds_refresh():
     for feed in Feed.query.all():
         try:
-            f = feedparser.parse(feed.uri,
-                                 etag=feed.etag,
-                                 modified=feed.modified)
-            for entry in sorted(f.entries, key=lambda e: e.published_parsed):
+            last_publish_time = feed.last_publish_time
+            parsed_feed = feedparser.parse(feed.uri,
+                                           etag=feed.etag,
+                                           modified=feed.modified)
+            for entry in sorted(parsed_feed.entries,
+                                key=lambda e: e.published_parsed):
                 publish_time = datetime.fromtimestamp(
                     mktime(entry.published_parsed))
-                if feed.last_publish_time is None or feed.last_publish_time < publish_time:
-                    db.session.add(
-                        Article(feed_id=feed.id,
-                                uri=entry.link,
-                                summary=entry.summary if hasattr(entry, 'summary') else None, \
-                                status='N'))
-                    feed.last_publish_time = publish_time
-            if hasattr(f, 'etag'):
-                feed.etag = f.etag
-            if hasattr(f, 'modified'):
-                feed.modified = f.modified
+                if last_publish_time is None or last_publish_time < publish_time:
+                    try:
+                        db.session.add(
+                            Article(feed_id=feed.id,
+                                    uri=entry.link,
+                                    summary=entry.summary if hasattr(entry, 'summary') else None, \
+                                    status='N'))
+                        db.session.commit()
+                    except exc.IntegrityError:
+                        # Such URI already exists
+                        db.session.rollback()
+                    last_publish_time = publish_time
+
+            feed.last_publish_time = last_publish_time
+            if hasattr(parsed_feed, 'etag'):
+                feed.etag = parsed_feed.etag
+            if hasattr(parsed_feed, 'modified'):
+                feed.modified = parsed_feed.modified
             db.session.commit()
         except:
             app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
