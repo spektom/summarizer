@@ -38,10 +38,12 @@ def feeds_refresh():
 @app.route('/tasks/reschedule', methods=['GET'])
 def tasks_reschedule():
     hour_ago = datetime.utcnow() - timedelta(hours=1)
-    for article in Article.query.filter(Article.status == 'Q'
-                                        and Article.update_time < hour_ago
-                                        and Article.retries < 3).all():
-        article.status = 'N'
+    for article in Article.query.filter(
+            Article.status == 'Q' and Article.update_time < hour_ago).all():
+        if article.retries < 3:
+            article.status = 'N'
+        else:
+            article.status = 'E'
         article.retries += 1
     db.session.commit()
     return '', 204
@@ -70,12 +72,9 @@ def articles_add():
 @app.route('/articles/update', methods=['POST'])
 def article_update():
     article = Article.query.get(request.json['id'])
-    if 'html' not in request.json:
-        article.status = 'E'
-    else:
-        article.html = request.json['html']
-        article.title = request.json['title']
-        article.status = 'D'
+    article.html = request.json['html']
+    article.title = request.json['title']
+    article.status = 'D'
     db.session.commit()
     return '', 200
 
