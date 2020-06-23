@@ -1,5 +1,7 @@
 import feedparser
 import logging
+import re
+import requests
 
 from time import mktime
 from datetime import datetime, timedelta
@@ -7,6 +9,13 @@ from flask import request, jsonify
 from sqlalchemy import exc
 from .app import app, db
 from .model import Feed, Article
+
+
+def is_blacklisted(uri):
+    for pattern in [r'.*/www.youtube.com/.*']:
+        if re.match(pattern, uri):
+            return True
+    return False
 
 
 @app.route('/feeds/refresh', methods=['GET'])
@@ -18,20 +27,36 @@ def feeds_refresh():
             parsed_feed = feedparser.parse(feed.uri,
                                            etag=feed.etag,
                                            modified=feed.modified)
+
             for entry in sorted(parsed_feed.entries, key=lambda e: e.published_parsed):
                 publish_time = datetime.fromtimestamp(mktime(entry.published_parsed))
+
                 if last_publish_time is None or last_publish_time < publish_time:
+                    article_uri = entry.link
+
+                    if feed.is_aggregator:
+                        # Find out the original URI to avoid duplications
+                        try:
+                            article_uri = requests.head(article_uri,
+                                                        allow_redirects=True).url
+                        except:
+                            continue
+
+                    if is_blacklisted(article_uri):
+                        continue
+
                     try:
-                        app.logger.info(f'Adding new article: {entry.link}')
+                        app.logger.info(f'Adding new article: {article_uri}')
                         db.session.add(
                             Article(feed_id=feed.id,
-                                    uri=entry.link,
+                                    uri=article_uri,
                                     summary=entry.summary if hasattr(entry, 'summary') else None, \
                                     status='N'))
                         db.session.commit()
                     except exc.IntegrityError:
                         # Such URI already exists
                         db.session.rollback()
+
                     last_publish_time = publish_time
 
             feed.last_publish_time = last_publish_time
@@ -40,9 +65,11 @@ def feeds_refresh():
             if hasattr(parsed_feed, 'modified'):
                 feed.modified = parsed_feed.modified
             db.session.commit()
+
         except:
             db.session.rollback()
             app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
+
     return '', 204
 
 

@@ -5,7 +5,7 @@ schedule_url_poll() {
   sleep 5
   while true
   do
-    curl -m60 -sSf $1 > /dev/null
+    curl -m300 -sSf $1 > /dev/null
     sleep $2
   done
 }

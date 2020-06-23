@@ -10,6 +10,7 @@ class Feed(db.Model):
     category = db.Column(db.Text, nullable=False)
     etag = db.Column(db.Text)
     modified = db.Column(db.Text)
+    is_aggregator = db.Column(db.Boolean, nullable=False, default=False)
 
 
 class Article(db.Model):
@@ -43,6 +44,8 @@ def init_db():
                 Feed(uri='https://feeds.npr.org/1019/rss.xml', name='NPR', category='Technology'),
                 Feed(uri='https://gizmodo.com/rss', name='Gizmodo', category='All News'),
                 Feed(uri='https://news.crunchbase.com/feed/', name='CrunchBase', category='News'),
+                Feed(uri='https://news.google.com/news/rss/headlines/section/topic/TECHNOLOGY', name='Google News', category='Technology', is_aggregator=True),
+                Feed(uri='https://news.google.com/news/rss/headlines/section/topic/BUSINESS', name='Google News', category='Business', is_aggregator=True),
                 Feed(uri='https://nypost.com/tech/feed/', name='NYPost', category='Tech'),
                 Feed(uri='https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml', name='NYT', category='Technology'),
                 Feed(uri='https://thenewstack.io/blog/feed', name='The New Stack', category='Recent Stories'),
@@ -54,6 +57,7 @@ def init_db():
                 Feed(uri='https://www.computerweekly.com/rss/All-Computer-Weekly-content.xml', name='ComputerWeekly', category='All Content'),
                 Feed(uri='https://www.economist.com/business/rss.xml', name='The Economist', category='Business'),
                 Feed(uri='https://www.economist.com/science-and-technology/rss.xml', name='The Economist', category='Science and Technology'),
+                Feed(uri='https://www.engadget.com/rss.xml', name='Engadget', category='All News'),
                 Feed(uri='https://www.eweek.com/rss.xml', name='eWEEK', category='Last Articles'),
                 Feed(uri='https://www.digitaltrends.com/news/feed/', name='Digital Trends', category='Tech News'),
                 Feed(uri='https://www.geekwire.com/feed/', name='GeekWire', category='News'),
