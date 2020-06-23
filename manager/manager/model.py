@@ -14,9 +14,7 @@ class Feed(db.Model):
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    create_time = db.Column(db.DateTime,
-                            nullable=False,
-                            default=datetime.utcnow)
+    create_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     update_time = db.Column(db.DateTime,
                             nullable=False,
                             default=datetime.utcnow,

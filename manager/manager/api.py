@@ -13,16 +13,16 @@ from .model import Feed, Article
 def feeds_refresh():
     for feed in Feed.query.all():
         try:
+            app.logger.info(f'Refreshing RSS feed: {feed.uri}')
             last_publish_time = feed.last_publish_time
             parsed_feed = feedparser.parse(feed.uri,
                                            etag=feed.etag,
                                            modified=feed.modified)
-            for entry in sorted(parsed_feed.entries,
-                                key=lambda e: e.published_parsed):
-                publish_time = datetime.fromtimestamp(
-                    mktime(entry.published_parsed))
+            for entry in sorted(parsed_feed.entries, key=lambda e: e.published_parsed):
+                publish_time = datetime.fromtimestamp(mktime(entry.published_parsed))
                 if last_publish_time is None or last_publish_time < publish_time:
                     try:
+                        app.logger.info(f'Adding new article: {entry.link}')
                         db.session.add(
                             Article(feed_id=feed.id,
                                     uri=entry.link,
@@ -41,6 +41,7 @@ def feeds_refresh():
                 feed.modified = parsed_feed.modified
             db.session.commit()
         except:
+            db.session.rollback()
             app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
     return '', 204
 
@@ -48,8 +49,8 @@ def feeds_refresh():
 @app.route('/tasks/reschedule', methods=['GET'])
 def tasks_reschedule():
     hour_ago = datetime.utcnow() - timedelta(hours=1)
-    for article in Article.query.filter(
-            Article.status == 'Q' and Article.update_time < hour_ago).all():
+    for article in Article.query.filter(Article.status == 'Q'
+                                        and Article.update_time < hour_ago).all():
         article.retries += 1
         if article.retries < 3:
             article.status = 'N'
@@ -70,18 +71,9 @@ def tasks_next():
     return '', 204
 
 
-@app.route('/articles/add', methods=['POST'])
-def articles_add():
-    article = request.json
-    db.session.add(
-        Article(uri=article['uri'], summary=article['summary'], status='N'))
-    db.session.commit()
-    return '', 201
-
-
-@app.route('/articles/update', methods=['POST'])
-def article_update():
-    article = Article.query.get(request.json['id'])
+@app.route('/article/<id>', methods=['POST'])
+def save_article(id):
+    article = Article.query.get_or_404(id)
     article.html = request.json['html']
     article.title = request.json['title']
     article.status = 'D'
@@ -91,7 +83,6 @@ def article_update():
 
 @app.route('/pagesaver/log', methods=['POST'])
 def pagesaver_log():
-    app.logger.log(
-        getattr(logging, request.json['level']),
-        f"<PageSaver> [{request.json['ts']}] {request.json['message']}")
+    app.logger.log(getattr(logging, request.json['level']),
+                   f"<PageSaver> [{request.json['ts']}] {request.json['message']}")
     return '', 200
