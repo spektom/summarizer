@@ -1,8 +1,11 @@
 *.pyc
 __pycache__/
 venv/
-*.sqlite
+*.db
+*.bak.*
 *.tar.bz2
 *.xpi
 firefox/.home
 firefox/firefox
+.data/
+*.model

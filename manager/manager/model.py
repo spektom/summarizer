@@ -31,7 +31,7 @@ class Article(db.Model):
 
 def init_db():
     db.create_all()
-    if False and Feed.query.count() == 0:
+    if Feed.query.count() == 0:
         for feed in [ \
                 Feed(uri='http://feeds.foxnews.com/foxnews/tech', name='Fox News', category='Tech'),
                 Feed(uri='http://feeds.mashable.com/Mashable', name='Mashable', category='Tech'),
@@ -39,8 +39,8 @@ def init_db():
                 Feed(uri='http://feeds.skynews.com/feeds/rss/technology.xml', name='Sky News', category='Technology'),
                 Feed(uri='http://feeds.washingtonpost.com/rss/rss_innovations', name='Washington Post', category='Innovations'),
                 Feed(uri='https://feeds.a.dj.com/rss/RSSWSJD.xml', name='WSJ', category='Technology: What\'s News'),
-                Feed(uri='https://feeds.feedburner.com/TechCrunch', name='TechCrunch', category='All Content'),
-                Feed(uri='https://feeds.feedburner.com/TheHackersNews', name='THN', category='Latest News'),
+                Feed(uri='https://feeds.feedburner.com/TechCrunch', name='TechCrunch', category='All Content', is_aggregator=True),
+                Feed(uri='https://feeds.feedburner.com/TheHackersNews', name='THN', category='Latest News', is_aggregator=True),
                 Feed(uri='https://feeds.npr.org/1019/rss.xml', name='NPR', category='Technology'),
                 Feed(uri='https://gizmodo.com/rss', name='Gizmodo', category='All News'),
                 Feed(uri='https://news.crunchbase.com/feed/', name='CrunchBase', category='News'),

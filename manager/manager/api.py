@@ -7,6 +7,7 @@ from time import mktime
 from datetime import datetime, timedelta
 from flask import request, jsonify
 from sqlalchemy import exc
+from sqlalchemy.sql.expression import func
 from .app import app, db
 from .model import Feed, Article
 
@@ -90,7 +91,7 @@ def tasks_reschedule():
 @app.route('/tasks/next', methods=['GET'])
 def tasks_next():
     article = Article.query.filter(Article.status == 'N').order_by(
-        Article.create_time).first()
+        func.random()).first()
     if article is not None:
         article.status = 'Q'
         db.session.commit()
