@@ -5,7 +5,7 @@ import bs4
 import logging
 import sqlite3
 
-from summarizer.lib import build_document_term_matrix
+from summarizer import train_and_save, create_summarizer
 
 
 def read_articles():
@@ -20,18 +20,27 @@ def read_articles():
 
 def parse_args():
     parser = argparse.ArgumentParser(usage='usage: %(prog)s [options]')
-    parser.add_argument('command', help='Command to run', choices=['dtm'])
-    parser.add_argument('-o',
-                        '--output_file',
-                        dest='output_file',
-                        default='dtm.model',
-                        help='Model output file')
+    parser.add_argument('command',
+                        help='Command to run',
+                        choices=['train', 'summarize'])
+    parser.add_argument('-i',
+                        '--input_file',
+                        dest='input_file',
+                        help='Input file containing the document')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(levelname)s %(module)s: %(message)s')
+
     options = parse_args()
-    if options.command == 'dtm':
-        build_document_term_matrix(read_articles(), options.output_file)
+
+    if options.command == 'train':
+        train_and_save(read_articles())
+
+    if options.command == 'summarize':
+        summarize = create_summarizer()
+        with open(options.input_file, 'r') as f:
+            l = f.readlines()
+            print('\n\n'.join(summarize('\n'.join(l[1:]), l[0])))

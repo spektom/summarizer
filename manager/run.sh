@@ -17,6 +17,7 @@ schedule_db_backup() {
     sleep $1
     version=$(date +"%Y%m%d%H")
     sqlite3 manager.db ".backup manager.bak.${version}"
+    rm -f $(ls -1t manager.bak.* | tail -n+4) # keep only latest 3 backups
   done
 }
 
