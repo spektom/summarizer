@@ -7,5 +7,4 @@ venv/
 *.xpi
 firefox/.home
 firefox/firefox
-.data/
 *.model
