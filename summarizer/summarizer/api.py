@@ -8,6 +8,7 @@ make_summary = create_summarizer()
 
 @app.route('/summarize', methods=['POST'])
 def summarize():
-    title = request.json['title']
-    text = request.json['text']
-    return jsonify({'summary': make_summary(text, title)})
+    return jsonify({
+        'summary': make_summary(request.json['text'], request.json['title'],
+                                request.json.get('top_n', 4))
+    })

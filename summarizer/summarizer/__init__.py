@@ -34,6 +34,8 @@ def clean_for_training(doc):
 
 
 def train_and_save(docs, model_file='dtm.model'):
+    init_nlp()
+
     logging.info('Started procesing %d documents', len(docs))
     docs = [clean_for_training(drop_non_sentences(doc)) for doc in docs]
 
@@ -47,14 +49,14 @@ def train_and_save(docs, model_file='dtm.model'):
     logging.info(f'Saved model to file {model_file}')
 
 
-def summarize(tfidf, feature_indices, text, title, top_n=5):
+def summarize(tfidf, feature_indices, text, title, top_n):
     doc = nlp(drop_non_sentences(text))
 
-    logging.info('Building document terms frequency')
+    logging.debug('Building document terms frequency')
 
     doc_freq = tfidf.transform([clean_for_training(doc)]).todense().tolist()[0]
 
-    logging.info('Ranking sentences')
+    logging.debug('Ranking sentences')
 
     # Drop sentences containing pronouns (he, she, etc.)
     sentences = [
@@ -118,4 +120,5 @@ def create_summarizer(model_file='dtm.model'):
     logging.info(f'Initializing summarizer')
     init_nlp()
 
-    return lambda text, title: summarize(tfidf, feature_indices, text, title)
+    return lambda text, title, top_n: summarize(tfidf, feature_indices, text, title,
+                                                top_n)

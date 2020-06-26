@@ -1,3 +1,4 @@
+import bs4
 import feedparser
 import logging
 import re
@@ -46,6 +47,8 @@ def feeds_refresh():
                     if is_blacklisted(article_uri):
                         continue
 
+                    article_uri = re.sub(r'[?#].*', '', article_uri)
+
                     try:
                         app.logger.info(f'Adding new article: {article_uri}')
                         db.session.add(
@@ -54,9 +57,15 @@ def feeds_refresh():
                                     summary=entry.summary if hasattr(entry, 'summary') else None, \
                                     status='N'))
                         db.session.commit()
-                    except exc.IntegrityError:
-                        # Such URI already exists
+
+                    except exc.IntegrityError:  # Existing URI
                         db.session.rollback()
+
+                        # Increment references count
+                        existing = Article.query.filter(
+                            Article.uri == article_uri).first()
+                        existing.refs_count += 1
+                        db.session.commit()
 
                     last_publish_time = publish_time
 
@@ -113,4 +122,35 @@ def save_article(id):
 def pagesaver_log():
     app.logger.log(getattr(logging, request.json['level']),
                    f"<PageSaver> [{request.json['ts']}] {request.json['message']}")
+    return '', 200
+
+
+@app.route('/pipeline/run/<article_id>', methods=['GET'])
+def pipeline_run(article_id):
+    article = Article.query.get_or_404(article_id)
+    if article.status != 'D' or article.html is None:
+        return f'Article #{article_id} not been fetched yet', 400
+
+    text = bs4.BeautifulSoup(article.html, 'lxml').get_text()
+
+    r = requests.post('http://localhost:6000/summarize',
+                      json={
+                          'title': article.title,
+                          'text': text
+                      })
+    r.raise_for_status()
+    summary = r.json()['summary']
+
+    source = 'Anonymous'
+    if article.feed_id is not None:
+        source = Feed.query.get(article.feed_id).name
+
+    r = requests.post('http://localhost:7000/summary',
+                      json={
+                          'source': source,
+                          'title': article.title,
+                          'uri': article.uri,
+                          'summary': summary
+                      })
+    r.raise_for_status()
     return '', 200

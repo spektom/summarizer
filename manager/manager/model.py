@@ -27,12 +27,14 @@ class Article(db.Model):
     title = db.Column(db.Text)
     summary = db.Column(db.Text)
     html = db.Column(db.Text)
+    refs_count = db.Column(db.Integer, nullable=False, default=1)
 
 
 def init_db():
     db.create_all()
     if Feed.query.count() == 0:
         for feed in [ \
+                Feed(uri='https://api.axios.com/feed/', name='Axios', category='Top'),
                 Feed(uri='http://feeds.foxnews.com/foxnews/tech', name='Fox News', category='Tech'),
                 Feed(uri='http://feeds.mashable.com/Mashable', name='Mashable', category='Tech'),
                 Feed(uri='http://feeds.nbcnews.com/nbcnews/public/tech', name='NBC News', category='Technology'),

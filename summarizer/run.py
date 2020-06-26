@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('-i',
                         '--input_file',
                         dest='input_file',
-                        help='Input file containing the document')
+                        help='Input file containing the document to summarize')
     return parser.parse_args()
 
 
@@ -43,9 +43,8 @@ if __name__ == '__main__':
         summarize = create_summarizer()
         with open(options.input_file, 'r') as f:
             l = f.readlines()
-            print('\n\n'.join(summarize('\n'.join(l[1:]), l[0])))
+            print('\n\n'.join(summarize('\n'.join(l[1:]), l[0], 4)))
 
     if options.command == 'app':
         from summarizer.api import app
         app.run(port=6000)
-

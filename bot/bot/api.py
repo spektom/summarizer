@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO,
 app = Flask(__name__)
 
 
-@app.route('/send_summary', methods=['POST'])
-def send_summary():
+@app.route('/summary', methods=['POST'])
+def summary():
     send_summary(request.json['source'], request.json['uri'], request.json['title'],
                  request.json['summary'])
     return '', 200
