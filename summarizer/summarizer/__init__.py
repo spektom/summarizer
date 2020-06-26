@@ -6,13 +6,11 @@ import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-def nlp(doc):
-    global nlp_
-    if 'nlp_' not in globals():
-        model = 'en_core_web_md'
-        logging.info(f'Loading NLP model: {model}')
-        nlp_ = spacy.load(model)
-    return nlp_(doc)
+def init_nlp():
+    global nlp
+    model = 'en_core_web_md'
+    logging.info(f'Loading NLP model: {model}')
+    nlp = spacy.load(model)
 
 
 def drop_non_sentences(text):
@@ -49,8 +47,8 @@ def train_and_save(docs, model_file='dtm.model'):
     logging.info(f'Saved model to file {model_file}')
 
 
-def summarize(tfidf, feature_indices, doc, title, top_n=5):
-    doc = nlp(drop_non_sentences(doc))
+def summarize(tfidf, feature_indices, text, title, top_n=5):
+    doc = nlp(drop_non_sentences(text))
 
     logging.info('Building document terms frequency')
 
@@ -76,31 +74,37 @@ def summarize(tfidf, feature_indices, doc, title, top_n=5):
     ]
 
     # Sentence indices and their ranks
-    ranked_sentences_indices = enumerate(sentences_freqs)
+    sentences_ranks = enumerate(sentences_freqs)
     ranked_sentences_num = len(sentences_freqs)
 
     # Increment scores of sentences similar to title
-    title_doc = nlp(title)
-    similarity_scores = [sent.similarity(title_doc) * 0.1 for sent in sentences]
-    ranked_sentences_indices = [(index, rank + similarity_scores[index])
-                                for index, rank in ranked_sentences_indices]
+    title_tokens = set([t.lemma_ for t in nlp(title) if not t.is_stop])
+    sentences_tokens = [[t.lemma_ for t in sent if not t.is_stop] for sent in sentences]
+    similarity_scores = [
+        len([t for t in tokens if t in title_tokens]) * 0.1 / len(title_tokens)
+        for tokens in sentences_tokens
+    ]
+    sentences_ranks = [(index, rank + similarity_scores[index])
+                       for index, rank in sentences_ranks]
 
     # Apply position based weight
-    ranked_sentences_indices = [(index, rank * (index / ranked_sentences_num))
-                                for index, rank in ranked_sentences_indices]
+    sentences_ranks = [(index, rank * (index / ranked_sentences_num))
+                       for index, rank in sentences_ranks]
 
     # Sort by rank
-    ranked_sentences_indices = sorted(ranked_sentences_indices,
-                                      key=lambda index_rank: index_rank[1] * -1)
+    sentences_ranks = sorted(sentences_ranks, key=lambda index_rank: index_rank[1] * -1)
+
+    # Rank threshold
+    threshold = sum([r[1] for r in sentences_ranks]) / len(sentences_ranks)
 
     # Choose top N from original sentences
-    result = [title]
-    for index, _ in ranked_sentences_indices:
+    result = []
+    for index, rank in sentences_ranks:
+        if len(result) >= top_n or rank < threshold:
+            break
         sentence = sentences[index]
         if sentence.text not in result:
             result.append(sentence.text)
-        if len(result) >= top_n:
-            break
     return result
 
 
@@ -112,4 +116,6 @@ def create_summarizer(model_file='dtm.model'):
     feature_indices = {n: i for i, n in enumerate(feature_names)}
 
     logging.info(f'Initializing summarizer')
+    init_nlp()
+
     return lambda text, title: summarize(tfidf, feature_indices, text, title)

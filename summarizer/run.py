@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser(usage='usage: %(prog)s [options]')
     parser.add_argument('command',
                         help='Command to run',
-                        choices=['train', 'summarize'])
+                        choices=['train', 'summarize', 'app'])
     parser.add_argument('-i',
                         '--input_file',
                         dest='input_file',
@@ -44,3 +44,8 @@ if __name__ == '__main__':
         with open(options.input_file, 'r') as f:
             l = f.readlines()
             print('\n\n'.join(summarize('\n'.join(l[1:]), l[0])))
+
+    if options.command == 'app':
+        from summarizer.api import app
+        app.run(port=6000)
+
