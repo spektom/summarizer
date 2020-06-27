@@ -1,4 +1,3 @@
-import bs4
 import feedparser
 import logging
 import re
@@ -18,6 +17,29 @@ def is_blacklisted(uri):
         if re.match(pattern, uri):
             return True
     return False
+
+
+def publish_article(article):
+    r = requests.post('http://localhost:6000/summarize',
+                      json={
+                          'title': article.title,
+                          'html': article.html
+                      })
+    r.raise_for_status()
+    summary = r.json()['summary']
+
+    source = 'Anonymous'
+    if article.feed_id is not None:
+        source = Feed.query.get(article.feed_id).name
+
+    r = requests.post('http://localhost:7000/summary',
+                      json={
+                          'source': source,
+                          'title': article.title,
+                          'uri': article.uri,
+                          'summary': summary
+                      })
+    r.raise_for_status()
 
 
 @app.route('/feeds/refresh', methods=['GET'])
@@ -115,6 +137,8 @@ def save_article(id):
     article.title = request.json['title']
     article.status = 'D'
     db.session.commit()
+
+    publish_article(article)
     return '', 200
 
 
@@ -125,32 +149,11 @@ def pagesaver_log():
     return '', 200
 
 
-@app.route('/pipeline/run/<article_id>', methods=['GET'])
+@app.route('/publish/<article_id>', methods=['GET'])
 def pipeline_run(article_id):
     article = Article.query.get_or_404(article_id)
     if article.status != 'D' or article.html is None:
         return f'Article #{article_id} not been fetched yet', 400
 
-    text = bs4.BeautifulSoup(article.html, 'lxml').get_text()
-
-    r = requests.post('http://localhost:6000/summarize',
-                      json={
-                          'title': article.title,
-                          'text': text
-                      })
-    r.raise_for_status()
-    summary = r.json()['summary']
-
-    source = 'Anonymous'
-    if article.feed_id is not None:
-        source = Feed.query.get(article.feed_id).name
-
-    r = requests.post('http://localhost:7000/summary',
-                      json={
-                          'source': source,
-                          'title': article.title,
-                          'uri': article.uri,
-                          'summary': summary
-                      })
-    r.raise_for_status()
+    publish_article(article)
     return '', 200

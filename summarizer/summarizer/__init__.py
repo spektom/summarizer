@@ -1,3 +1,4 @@
+import bs4
 import joblib
 import logging
 import re
@@ -13,14 +14,26 @@ def init_nlp():
     nlp = spacy.load(model)
 
 
-def drop_non_sentences(text):
+def html_to_text(html):
+    soup = bs4.BeautifulSoup(html, 'lxml')
+    for e in soup.select('#engadget-article-footer'):
+        e.decompose()
+    return soup.get_text(' ')
+
+
+def clean_text(text):
+    """Preliminary text cleaning"""
+    # Trim lines
     lines = [line.strip() for line in text.split('\n')]
+
+    # Drop non-sentences (ones that don't have a dot in them), while relying on readability
+    # plug-in HTML structure:
     lines = [
         line for line in lines
         if len(line) > 0 and '.' in line and len(re.findall(r'\s+', line)) > 3
     ]
-    text = ' '.join(lines)
-    return text
+
+    return ' '.join(lines)
 
 
 def clean_for_training(doc):
@@ -33,11 +46,48 @@ def clean_for_training(doc):
     return ' '.join(lemmas)
 
 
+def is_relevant_sentence(sentence):
+    """Decides whether such a sentence is wanted in a summary"""
+    # Sentences containing pronouns (he, she, etc.)
+    if len([t for t in sentence if t.pos_ == 'PRON']) > 0:
+        return False
+
+    # Not ending with a dot
+    if sentence[-1].lemma_ != '.':
+        return False
+
+    return True
+
+
+def clean_sentence(sentence):
+    """Remove irrelevant elements from a sentence"""
+
+    # Remove adverbs from the beginning ("Also, ", "Moreover, ", etc.)
+    sentence_pos = [t.pos_ for t in sentence]
+    for drop_prefix in [['ADV', 'PUNCT'], ['ADV', 'ADV', 'PUNCT']]:
+        if sentence_pos[:len(drop_prefix)] == drop_prefix:
+            sentence = sentence[len(drop_prefix):]
+            break
+
+    return sentence
+
+
+def clean_result(text):
+    text = text.strip()
+
+    # Capitalize
+    if not text[0].isupper():
+        text = text[0].upper() + text[1:]
+
+    text = re.sub(r'\s+\.$', '.', text)
+    return text
+
+
 def train_and_save(docs, model_file='dtm.model'):
     init_nlp()
 
     logging.info('Started procesing %d documents', len(docs))
-    docs = [clean_for_training(drop_non_sentences(doc)) for doc in docs]
+    docs = [clean_for_training(clean_text(html_to_text(doc))) for doc in docs]
 
     tfidf = TfidfVectorizer()
     logging.info('Started building document-term matrix')
@@ -49,8 +99,8 @@ def train_and_save(docs, model_file='dtm.model'):
     logging.info(f'Saved model to file {model_file}')
 
 
-def summarize(tfidf, feature_indices, text, title, top_n):
-    doc = nlp(drop_non_sentences(text))
+def summarize(tfidf, feature_indices, title, html, top_n):
+    doc = nlp(clean_text(html_to_text(html)))
 
     logging.debug('Building document terms frequency')
 
@@ -58,9 +108,9 @@ def summarize(tfidf, feature_indices, text, title, top_n):
 
     logging.debug('Ranking sentences')
 
-    # Drop sentences containing pronouns (he, she, etc.)
+    # Drop irrelevant sentences
     sentences = [
-        sent for sent in doc.sents if len([t for t in sent if t.pos_ == 'PRON']) == 0
+        clean_sentence(sent) for sent in doc.sents if is_relevant_sentence(sent)
     ]
 
     # Word frequencies in sentences (only nouns are taken into account)
@@ -96,17 +146,20 @@ def summarize(tfidf, feature_indices, text, title, top_n):
     # Sort by rank
     sentences_ranks = sorted(sentences_ranks, key=lambda index_rank: index_rank[1] * -1)
 
-    # Rank threshold
-    threshold = sum([r[1] for r in sentences_ranks]) / len(sentences_ranks)
+    result = []
 
     # Choose top N from original sentences
-    result = []
-    for index, rank in sentences_ranks:
-        if len(result) >= top_n or rank < threshold:
-            break
-        sentence = sentences[index]
-        if sentence.text not in result:
-            result.append(sentence.text)
+    if len(sentences_ranks) > 0:
+
+        # Rank threshold
+        threshold = sum([r[1] for r in sentences_ranks]) / len(sentences_ranks)
+        for index, rank in sentences_ranks:
+            if len(result) >= top_n or rank < threshold:
+                break
+            sentence = clean_result(sentences[index].text)
+            if sentence not in result:
+                result.append(sentence)
+
     return result
 
 
@@ -120,5 +173,5 @@ def create_summarizer(model_file='dtm.model'):
     logging.info(f'Initializing summarizer')
     init_nlp()
 
-    return lambda text, title, top_n: summarize(tfidf, feature_indices, text, title,
+    return lambda title, html, top_n: summarize(tfidf, feature_indices, title, html,
                                                 top_n)
