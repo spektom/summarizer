@@ -48,11 +48,18 @@ def clean_for_training(doc):
 
 def is_relevant_sentence(sentence):
     """Decides whether such a sentence is wanted in a summary"""
-    # Sentences containing pronouns (he, she, etc.)
-    if len([t for t in sentence if t.pos_ == 'PRON']) > 0:
+    # Sentences shouldn't contain pronoun before comma
+    for t in sentence:
+        if t.lemma_ == ',':
+            break
+        if t.pos_ == 'PRON':
+            return False
+
+    # Sentences must contain at least one verb
+    if len([t for t in sentence if t.pos_ == 'VERB']) == 0:
         return False
 
-    # Not ending with a dot
+    # Sentences must end with a dot
     if sentence[-1].lemma_ != '.':
         return False
 
@@ -130,12 +137,12 @@ def summarize(tfidf, feature_indices, title, html, top_n):
     ranked_sentences_num = len(sentences_freqs)
 
     # Increment scores of sentences similar to title
-    title_tokens = set([t.lemma_ for t in nlp(title) if not t.is_stop])
-    sentences_tokens = [[t.lemma_ for t in sent if not t.is_stop] for sent in sentences]
-    similarity_scores = [
-        len([t for t in tokens if t in title_tokens]) * 0.1 / len(title_tokens)
-        for tokens in sentences_tokens
+    title_tokens = nlp(''.join([t.text_with_ws for t in nlp(title) if not t.is_stop]))
+    sentences_tokens = [
+        nlp(''.join([t.text_with_ws for t in sent if not t.is_stop]))
+        for sent in sentences
     ]
+    similarity_scores = [tokens.similarity(title_tokens) for tokens in sentences_tokens]
     sentences_ranks = [(index, rank + similarity_scores[index])
                        for index, rank in sentences_ranks]
 
