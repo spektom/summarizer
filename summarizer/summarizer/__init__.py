@@ -3,6 +3,7 @@ import joblib
 import logging
 import re
 import spacy
+import statistics
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -56,7 +57,7 @@ def is_relevant_sentence(sentence):
             return False
 
     # Sentences must contain at least one verb
-    if len([t for t in sentence if t.pos_ == 'VERB']) == 0:
+    if next((t for t in sentence if t.pos_ == 'VERB'), None) is None:
         return False
 
     # Sentences must end with a dot
@@ -67,11 +68,11 @@ def is_relevant_sentence(sentence):
 
 
 def clean_sentence(sentence):
-    """Remove irrelevant elements from a sentence"""
+    """Remove irrelevant elements from a sentence prior to building a summary"""
 
     # Remove adverbs from the beginning ("Also, ", "Moreover, ", etc.)
     sentence_pos = [t.pos_ for t in sentence]
-    for drop_prefix in [['ADV', 'PUNCT'], ['ADV', 'ADV', 'PUNCT']]:
+    for drop_prefix in [['ADV', 'PUNCT'], ['ADV', 'ADV', 'PUNCT'], ['INTJ', 'PUNCT']]:
         if sentence_pos[:len(drop_prefix)] == drop_prefix:
             sentence = sentence[len(drop_prefix):]
             break
@@ -79,14 +80,16 @@ def clean_sentence(sentence):
     return sentence
 
 
-def clean_result(text):
-    text = text.strip()
+def clean_result(sentence):
+    """Clean the result as it will be shown in a summary"""
+    text = sentence.text_with_ws.strip()
 
     # Capitalize
     if not text[0].isupper():
         text = text[0].upper() + text[1:]
 
     text = re.sub(r'\s+\.$', '.', text)
+
     return text
 
 
@@ -146,27 +149,20 @@ def summarize(tfidf, feature_indices, title, html, top_n):
     sentences_ranks = [(index, rank + similarity_scores[index])
                        for index, rank in sentences_ranks]
 
-    # Apply position based weight
-    sentences_ranks = [(index, rank * (index / ranked_sentences_num))
-                       for index, rank in sentences_ranks]
-
     # Sort by rank
-    sentences_ranks = sorted(sentences_ranks, key=lambda index_rank: index_rank[1] * -1)
-
-    result = []
+    sentences_ranks = sorted(sentences_ranks, key=lambda x: x[1] * -1)
 
     # Choose top N from original sentences
+    result = []
     if len(sentences_ranks) > 0:
-
         # Rank threshold
         threshold = sum([r[1] for r in sentences_ranks]) / len(sentences_ranks)
         for index, rank in sentences_ranks:
             if len(result) >= top_n or rank < threshold:
                 break
-            sentence = clean_result(sentences[index].text)
+            sentence = clean_result(sentences[index])
             if sentence not in result:
                 result.append(sentence)
-
     return result
 
 

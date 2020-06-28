@@ -2,7 +2,7 @@ function sendContent() {
   document.getElementsByClassName('reader-message')[0].remove();
 
   browser.runtime.sendMessage({
-    'title': document.getElementsByClassName('reader-title')[0].innerText,
+    'title': document.getElementsByClassName('reader-title')[0].innerText.split("|")[0].trimEnd(),
     'html': document.getElementsByClassName('container')[0].outerHTML
   });
 }

@@ -28,6 +28,7 @@ class Article(db.Model):
     summary = db.Column(db.Text)
     html = db.Column(db.Text)
     refs_count = db.Column(db.Integer, nullable=False, default=1)
+    source = db.Column(db.Text)
 
 
 def init_db():

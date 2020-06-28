@@ -29,7 +29,9 @@ def publish_article(article):
     summary = r.json()['summary']
 
     source = 'Anonymous'
-    if article.feed_id is not None:
+    if article.source is not None:
+        source = article.source
+    elif article.feed_id is not None:
         source = Feed.query.get(article.feed_id).name
 
     r = requests.post('http://localhost:7000/summary',
@@ -71,13 +73,19 @@ def feeds_refresh():
 
                     article_uri = re.sub(r'[?#].*', '', article_uri)
 
+                    # Determine source in case of aggregator
+                    source = None
+                    if hasattr(entry, 'source'):
+                        source = entry.source.title
+
                     try:
                         app.logger.info(f'Adding new article: {article_uri}')
                         db.session.add(
                             Article(feed_id=feed.id,
                                     uri=article_uri,
                                     summary=entry.summary if hasattr(entry, 'summary') else None, \
-                                    status='N'))
+                                    status='N',
+                                    source=source))
                         db.session.commit()
 
                     except exc.IntegrityError:  # Existing URI
