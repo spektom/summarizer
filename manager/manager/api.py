@@ -75,7 +75,7 @@ def feeds_refresh():
 
                     # Determine source in case of aggregator
                     source = None
-                    if hasattr(entry, 'source'):
+                    if feed.is_aggregator and hasattr(entry, 'source'):
                         source = entry.source.title
 
                     try:

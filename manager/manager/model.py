@@ -37,7 +37,6 @@ def init_db():
         for feed in [ \
                 Feed(uri='https://api.axios.com/feed/', name='Axios', category='Top'),
                 Feed(uri='http://feeds.foxnews.com/foxnews/tech', name='Fox News', category='Tech'),
-                Feed(uri='http://feeds.mashable.com/Mashable', name='Mashable', category='Tech'),
                 Feed(uri='http://feeds.nbcnews.com/nbcnews/public/tech', name='NBC News', category='Technology'),
                 Feed(uri='http://feeds.skynews.com/feeds/rss/technology.xml', name='Sky News', category='Technology'),
                 Feed(uri='http://feeds.washingtonpost.com/rss/rss_innovations', name='Washington Post', category='Innovations'),

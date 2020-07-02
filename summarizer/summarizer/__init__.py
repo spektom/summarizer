@@ -24,17 +24,18 @@ def html_to_text(html):
 
 def clean_text(text):
     """Preliminary text cleaning"""
-    # Trim lines
-    lines = [line.strip() for line in text.split('\n')]
+    lines = text.split('\n')
 
-    # Drop non-sentences (ones that don't have a dot in them), while relying on readability
+    # Drop non-sentences (ones that don't have a dot in them), while relying on Reader View
     # plug-in HTML structure:
-    lines = [
-        line for line in lines
-        if len(line) > 0 and '.' in line and len(re.findall(r'\s+', line)) > 3
-    ]
+    lines = [line for line in lines if len(line) > 0 and '.' in line]
 
-    return ' '.join(lines)
+    doc = nlp(' '.join(lines))
+    meaningful_sentences = [sent for sent in doc.sents if \
+        next((s for s in sent if s.pos_ == 'VERB'), None) is not None \
+        and len(sent) >= 5
+    ]
+    return ' '.join([sent.text for sent in meaningful_sentences])
 
 
 def clean_for_training(doc):
@@ -42,26 +43,19 @@ def clean_for_training(doc):
         doc = nlp(doc)
     lemmas = [
         token.lemma_ for token in doc
-        if not token.is_stop and re.search(r'[A-Za-z]{3,}', token.lemma_)
+        if not token.is_stop and re.search(r'^[A-Za-z]{2,}', token.lemma_)
     ]
     return ' '.join(lemmas)
 
 
 def is_relevant_sentence(sentence):
     """Decides whether such a sentence is wanted in a summary"""
-    # Sentences shouldn't contain pronoun before comma
-    for t in sentence:
-        if t.lemma_ == ',':
-            break
-        if t.pos_ == 'PRON':
-            return False
-
     # Sentences must contain at least one verb
     if next((t for t in sentence if t.pos_ == 'VERB'), None) is None:
         return False
 
     # Sentences must end with a dot
-    if sentence[-1].lemma_ != '.':
+    if not sentence.text.strip().endswith('.'):
         return False
 
     return True
@@ -82,13 +76,14 @@ def clean_sentence(sentence):
 
 def clean_result(sentence):
     """Clean the result as it will be shown in a summary"""
-    text = sentence.text_with_ws.strip()
+    text = sentence.text.strip()
 
     # Capitalize
     if not text[0].isupper():
         text = text[0].upper() + text[1:]
 
     text = re.sub(r'\s+\.$', '.', text)
+    text = re.sub(r'  +', ' ', text)
 
     return text
 
@@ -140,10 +135,9 @@ def summarize(tfidf, feature_indices, title, html, top_n):
     ranked_sentences_num = len(sentences_freqs)
 
     # Increment scores of sentences similar to title
-    title_tokens = nlp(''.join([t.text_with_ws for t in nlp(title) if not t.is_stop]))
+    title_tokens = nlp(''.join([t.text for t in nlp(title) if not t.is_stop]))
     sentences_tokens = [
-        nlp(''.join([t.text_with_ws for t in sent if not t.is_stop]))
-        for sent in sentences
+        nlp(''.join([t.text for t in sent if not t.is_stop])) for sent in sentences
     ]
     similarity_scores = [tokens.similarity(title_tokens) for tokens in sentences_tokens]
     sentences_ranks = [(index, rank + similarity_scores[index])

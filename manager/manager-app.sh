@@ -31,4 +31,9 @@ schedule_db_backup 10800&
 
 trap 'cleanup' EXIT
 
+[ ! -d venv ] && ./setup.sh
+if [ -z "${VIRTUAL_ENV}" ]; then
+  source venv/bin/activate
+fi
+
 env FLASK_APP=manager.app flask run
