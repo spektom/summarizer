@@ -11,7 +11,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 def init_nlp():
     global nlp
-    model = 'en_core_web_md'
+    model = 'en_core_web_lg'
     logging.info(f'Loading NLP model: {model}')
     nlp = spacy.load(model)
 
@@ -35,7 +35,7 @@ def clean_text(text):
 
 
 def run_in_parallel(func, objs):
-    with mp.Pool(mp.cpu_count()) as pool:
+    with mp.Pool() as pool:
         return pool.map(func, objs)
 
 
@@ -69,12 +69,32 @@ def is_relevant_sentence(sentence):
 def clean_sentence(sentence):
     """Remove irrelevant elements from a sentence prior to building a summary"""
 
-    # Remove adverbs from the beginning ("Also, ", "Moreover, ", etc.)
     sentence_pos = [t.pos_ for t in sentence]
-    for drop_prefix in [['ADV', 'PUNCT'], ['ADV', 'ADV', 'PUNCT'], ['INTJ', 'PUNCT']]:
+    sentence_lemmas = [t.lemma_ for t in sentence]
+
+    # Remove prefixes by lemmas
+    for drop_prefix in [['on', 'top', 'of', 'that', ','], ['that', 'say', ',']]:
+        if sentence_lemmas[:len(drop_prefix)] == drop_prefix:
+            sentence = sentence[len(drop_prefix):]
+            break
+
+    # Remove prefixes by POS tags
+    for drop_prefix in [['ADV', 'PUNCT'], ['ADV', 'ADV', 'PUNCT'], ['INTJ', 'PUNCT'],
+                        ['CCONJ', 'PUNCT'], ['CCONJ']]:
         if sentence_pos[:len(drop_prefix)] == drop_prefix:
             sentence = sentence[len(drop_prefix):]
             break
+
+    # Remove endings that start with specific lemmas
+    for drop_suffix in [[',', 'say'], [',', '-PRON-', 'say'], [',', '-PRON-', 'tell']]:
+        for i in range(len(sentence_lemmas)):
+            if sentence_lemmas[i] == drop_suffix[0] and sentence_lemmas[
+                    i:i + len(drop_suffix)] == drop_suffix:
+                sentence = sentence[:i]
+                break
+        else:
+            continue
+        break
 
     return sentence
 
@@ -87,8 +107,8 @@ def clean_result(sentence):
     if not text[0].isupper():
         text = text[0].upper() + text[1:]
 
-    text = re.sub(r'\s+\.$', '.', text)
-    text = re.sub(r'  +', ' ', text)
+    text = re.sub(r'\s+([,\!\.])', r'\1', text)
+    text = re.sub(r'\s\s+', ' ', text)
 
     return text
 
@@ -163,9 +183,15 @@ def summarize(tfidf, feature_indices, title, html, top_n):
     sentences_tokens = [
         nlp(' '.join([t.lemma_ for t in drop_stop_words(sent)])) for sent in sentences
     ]
-    similarity_scores = [tokens.similarity(title_tokens) for tokens in sentences_tokens]
-    sentences_ranks = [(index, rank + similarity_scores[index])
-                       for index, rank in sentences_ranks]
+    similarity_scores = [
+        0.0 if len(tokens) == 0 else tokens.similarity(title_tokens)
+        for tokens in sentences_tokens
+    ]
+    sentences_ranks = [
+        (index,
+         0.0 if similarity_scores[index] > 0.99 else rank + similarity_scores[index])
+        for index, rank in sentences_ranks
+    ]
 
     # Sort by rank
     sentences_ranks = sorted(sentences_ranks, key=lambda x: x[1] * -1)

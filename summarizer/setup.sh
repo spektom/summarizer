@@ -9,4 +9,4 @@ python3 -mvenv venv
 source venv/bin/activate
 pip install wheel
 pip install -r requirements.txt
-python -m spacy download en_core_web_md
+python -m spacy download en_core_web_lg

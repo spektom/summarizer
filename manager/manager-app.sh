@@ -29,7 +29,7 @@ schedule_url_poll http://localhost:5000/feeds/refresh 900 &
 schedule_url_poll http://localhost:5000/tasks/reschedule 3600 &
 schedule_db_backup 10800&
 
-trap 'cleanup' EXIT
+trap cleanup EXIT
 
 [ ! -d venv ] && ./setup.sh
 if [ -z "${VIRTUAL_ENV}" ]; then
