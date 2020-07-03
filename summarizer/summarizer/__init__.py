@@ -4,6 +4,7 @@ import logging
 import re
 import spacy
 import statistics
+import multiprocessing as mp
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -30,22 +31,26 @@ def clean_text(text):
     # plug-in HTML structure:
     lines = [line for line in lines if len(line) > 0 and '.' in line]
 
-    doc = nlp(' '.join(lines))
-    meaningful_sentences = [sent for sent in doc.sents if \
+    return ' '.join(lines)
+
+
+def run_in_parallel(func, objs):
+    with mp.Pool(mp.cpu_count()) as pool:
+        return pool.map(func, objs)
+
+
+def retain_sentences_with_verbs(sentences):
+    return [sent for sent in sentences if \
         next((s for s in sent if s.pos_ == 'VERB'), None) is not None \
         and len(sent) >= 5
     ]
-    return ' '.join([sent.text for sent in meaningful_sentences])
 
 
-def clean_for_training(doc):
-    if not isinstance(doc, spacy.tokens.doc.Doc):
-        doc = nlp(doc)
-    lemmas = [
-        token.lemma_ for token in doc
+def drop_stop_words(doc):
+    return [
+        token for token in doc
         if not token.is_stop and re.search(r'^[A-Za-z]{2,}', token.lemma_)
     ]
-    return ' '.join(lemmas)
 
 
 def is_relevant_sentence(sentence):
@@ -88,16 +93,30 @@ def clean_result(sentence):
     return text
 
 
-def train_and_save(docs, model_file='dtm.model'):
+def train_and_save(htmls, model_file='dtm.model'):
     init_nlp()
 
-    logging.info('Started procesing %d documents', len(docs))
-    docs = [clean_for_training(clean_text(html_to_text(doc))) for doc in docs]
+    logging.info('Started procesing %d documents', len(htmls))
+
+    logging.info('Converting HTML to text')
+    texts = run_in_parallel(html_to_text, htmls)
+
+    logging.info('Cleaning up texts')
+    texts = run_in_parallel(clean_text, texts)
+
+    logging.info('Removing stop words')
+    docs = nlp.pipe(texts, batch_size=100, n_process=mp.cpu_count())
+    docs_sents = [retain_sentences_with_verbs(doc.sents) for doc in docs]
+    docs_for_train = [
+        ' '.join(
+            [token.lemma_ for sent in doc_sents for token in drop_stop_words(sent)])
+        for doc_sents in docs_sents
+    ]
 
     tfidf = TfidfVectorizer()
     logging.info('Started building document-term matrix')
 
-    tfidf.fit(docs)
+    tfidf.fit(docs_for_train)
     logging.info('Finished building document-term matrix')
 
     joblib.dump(tfidf, model_file)
@@ -105,17 +124,22 @@ def train_and_save(docs, model_file='dtm.model'):
 
 
 def summarize(tfidf, feature_indices, title, html, top_n):
-    doc = nlp(clean_text(html_to_text(html)))
+    text = html_to_text(html)
+    text = clean_text(text)
+    doc = nlp(text)
+    sentences = retain_sentences_with_verbs(doc.sents)
+    doc_for_train = ' '.join(
+        [token.lemma_ for sent in sentences for token in drop_stop_words(sent)])
 
     logging.debug('Building document terms frequency')
 
-    doc_freq = tfidf.transform([clean_for_training(doc)]).todense().tolist()[0]
+    doc_freq = tfidf.transform([doc_for_train]).todense().tolist()[0]
 
     logging.debug('Ranking sentences')
 
     # Drop irrelevant sentences
     sentences = [
-        clean_sentence(sent) for sent in doc.sents if is_relevant_sentence(sent)
+        clean_sentence(sent) for sent in sentences if is_relevant_sentence(sent)
     ]
 
     # Word frequencies in sentences (only nouns are taken into account)
@@ -135,9 +159,9 @@ def summarize(tfidf, feature_indices, title, html, top_n):
     ranked_sentences_num = len(sentences_freqs)
 
     # Increment scores of sentences similar to title
-    title_tokens = nlp(''.join([t.text for t in nlp(title) if not t.is_stop]))
+    title_tokens = nlp(' '.join([t.lemma_ for t in drop_stop_words(nlp(title))]))
     sentences_tokens = [
-        nlp(''.join([t.text for t in sent if not t.is_stop])) for sent in sentences
+        nlp(' '.join([t.lemma_ for t in drop_stop_words(sent)])) for sent in sentences
     ]
     similarity_scores = [tokens.similarity(title_tokens) for tokens in sentences_tokens]
     sentences_ranks = [(index, rank + similarity_scores[index])
