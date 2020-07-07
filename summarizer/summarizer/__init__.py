@@ -4,6 +4,7 @@ import logging
 import re
 import spacy
 import statistics
+import math
 import multiprocessing as mp
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -18,8 +19,9 @@ def init_nlp():
 
 def html_to_text(html):
     soup = bs4.BeautifulSoup(html, 'lxml')
-    for e in soup.select('#engadget-article-footer'):
-        e.decompose()
+    for s in ['#engadget-article-footer', '.reader-header']:
+        for e in soup.select(s):
+            e.decompose()
     return soup.get_text(' ')
 
 
@@ -39,20 +41,6 @@ def run_in_parallel(func, objs):
         return pool.map(func, objs)
 
 
-def retain_sentences_with_verbs(sentences):
-    return [sent for sent in sentences if \
-        next((s for s in sent if s.pos_ == 'VERB'), None) is not None \
-        and len(sent) >= 5
-    ]
-
-
-def drop_stop_words(doc):
-    return [
-        token for token in doc
-        if not token.is_stop and re.search(r'^[A-Za-z]{2,}', token.lemma_)
-    ]
-
-
 def is_relevant_sentence(sentence):
     """Decides whether such a sentence is wanted in a summary"""
     # Sentences must contain at least one verb
@@ -64,6 +52,17 @@ def is_relevant_sentence(sentence):
         return False
 
     return True
+
+
+def drop_irrelevant_sentences(sentences):
+    return [sent for sent in sentences if is_relevant_sentence(sent)]
+
+
+def drop_stop_words(doc):
+    return [
+        token for token in doc
+        if not token.is_stop and re.search(r'^[A-Za-z]{2,}', token.lemma_)
+    ]
 
 
 def clean_sentence(sentence):
@@ -110,6 +109,9 @@ def clean_result(sentence):
     text = re.sub(r'\s+([,\!\.])', r'\1', text)
     text = re.sub(r'\s\s+', ' ', text)
 
+    if not text.endswith('.'):
+        text += '.'
+
     return text
 
 
@@ -126,7 +128,7 @@ def train_and_save(htmls, model_file='dtm.model'):
 
     logging.info('Removing stop words')
     docs = nlp.pipe(texts, batch_size=100, n_process=mp.cpu_count())
-    docs_sents = [retain_sentences_with_verbs(doc.sents) for doc in docs]
+    docs_sents = [drop_irrelevant_sentences(doc.sents) for doc in docs]
     docs_for_train = [
         ' '.join(
             [token.lemma_ for sent in doc_sents for token in drop_stop_words(sent)])
@@ -147,7 +149,7 @@ def summarize(tfidf, feature_indices, title, html, top_n):
     text = html_to_text(html)
     text = clean_text(text)
     doc = nlp(text)
-    sentences = retain_sentences_with_verbs(doc.sents)
+    sentences = drop_irrelevant_sentences(doc.sents)
     doc_for_train = ' '.join(
         [token.lemma_ for sent in sentences for token in drop_stop_words(sent)])
 
@@ -155,28 +157,17 @@ def summarize(tfidf, feature_indices, title, html, top_n):
 
     doc_freq = tfidf.transform([doc_for_train]).todense().tolist()[0]
 
-    logging.debug('Ranking sentences')
+    logging.debug('Scoring sentences')
 
-    # Drop irrelevant sentences
-    sentences = [
-        clean_sentence(sent) for sent in sentences if is_relevant_sentence(sent)
-    ]
-
-    # Word frequencies in sentences (only nouns are taken into account)
+    # Score sentences based on word frequencies (only nouns are taken into account)
     sentences_freqs = [[
         doc_freq[feature_indices[t.lemma_]] for t in sent
         if t.pos_ == 'NOUN' and t.lemma_ in feature_indices
     ] for sent in sentences]
-
-    # Sentences frequences
     doc_freq_sum = sum(doc_freq)
-    sentences_freqs = [
+    frequency_scores = [
         sum(sentence_freq) / doc_freq_sum for sentence_freq in sentences_freqs
     ]
-
-    # Sentence indices and their ranks
-    sentences_ranks = enumerate(sentences_freqs)
-    ranked_sentences_num = len(sentences_freqs)
 
     # Increment scores of sentences similar to title
     title_tokens = nlp(' '.join([t.lemma_ for t in drop_stop_words(nlp(title))]))
@@ -187,26 +178,30 @@ def summarize(tfidf, feature_indices, title, html, top_n):
         0.0 if len(tokens) == 0 else tokens.similarity(title_tokens)
         for tokens in sentences_tokens
     ]
-    sentences_ranks = [
-        (index,
-         0.0 if similarity_scores[index] > 0.99 else rank + similarity_scores[index])
-        for index, rank in sentences_ranks
+
+    # Length-based score
+    length_scores = [
+        0.1 / (1 + math.fabs(20.0 - len(sentence))) for sentence in sentences
     ]
 
-    # Sort by rank
-    sentences_ranks = sorted(sentences_ranks, key=lambda x: x[1] * -1)
+    # Calc total score, and sort by it
+    total_scores = [(index, frequency_scores[index] * 0.5 +
+                     similarity_scores[index] * 0.4 + length_scores[index] * 0.1)
+                    for index in range(len(sentences))]
+    total_scores = sorted(total_scores, key=lambda x: x[1] * -1)
 
     # Choose top N from original sentences
     result = []
-    if len(sentences_ranks) > 0:
-        # Rank threshold
-        threshold = sum([r[1] for r in sentences_ranks]) / len(sentences_ranks)
-        for index, rank in sentences_ranks:
-            if len(result) >= top_n or rank < threshold:
+    if len(total_scores) > 0:
+        # Set threshold to average score
+        threshold = sum([r[1] for r in total_scores]) / len(total_scores)
+        for index, score in total_scores:
+            if len(result) >= top_n:  # or score < threshold:
                 break
             sentence = clean_result(sentences[index])
             if sentence not in result:
-                result.append(sentence)
+                result.append((index, sentence))
+    result = [s for _, s in sorted(result, key=lambda x: x[0])]
     return result
 
 

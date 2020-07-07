@@ -54,8 +54,11 @@ def feeds_refresh():
                                            etag=feed.etag,
                                            modified=feed.modified)
 
-            for entry in sorted(parsed_feed.entries, key=lambda e: e.published_parsed):
-                publish_time = datetime.fromtimestamp(mktime(entry.published_parsed))
+            for entry in parsed_feed.entries:
+                entry.update_time = entry.publised_parsed if 'publised_parsed' in entry else entry.updated_parsed
+
+            for entry in sorted(parsed_feed.entries, key=lambda e: e.update_time):
+                publish_time = datetime.fromtimestamp(mktime(entry.update_time))
 
                 if last_publish_time is None or last_publish_time < publish_time:
                     article_uri = entry.link
