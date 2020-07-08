@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-FF_VERSION=78.0b9
+FF_VERSION=79.0b5
 
 if [ -d firefox ]; then
   echo "WARNING: Directory firefox/ already exists. To rebuild, remove the directory, then re-run the script."
@@ -21,7 +21,7 @@ else
   wget -cq -O firefox/distribution/extensions/bypasspaywalls@bypasspaywalls.weebly.com.xpi \
     https://github.com/iamadamdev/bypass-paywalls-chrome/releases/latest/download/bypass-paywalls-firefox.xpi
   wget -cq -O firefox/distribution/extensions/uBlock0@raymondhill.net.xpi \
-    https://addons.mozilla.org/firefox/downloads/file/3579401/ublock_origin-1.27.10-an+fx.xpi
+    https://addons.mozilla.org/firefox/downloads/file/3579401/ublock_origin-latest-an+fx.xpi
   (cd ../pagesaver; ./build.sh)
   mv ../pagesaver/*.xpi firefox/distribution/extensions
 
