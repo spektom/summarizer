@@ -3,13 +3,15 @@ import logging
 import re
 import requests
 
-from time import mktime
+from time import mktime, localtime
 from datetime import datetime, timedelta
 from flask import request, jsonify
 from sqlalchemy import exc
 from sqlalchemy.sql.expression import func
 from .app import app, db
 from .model import Feed, Article
+
+feedparser.USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0'
 
 
 def is_blacklisted(uri):
@@ -55,10 +57,18 @@ def feeds_refresh():
                                            modified=feed.modified)
 
             for entry in parsed_feed.entries:
-                entry.update_time = entry.publised_parsed if 'publised_parsed' in entry else entry.updated_parsed
+                if 'published_parsed' in entry:
+                    entry.update_time = entry.published_parsed
+                elif 'updated_parsed' in entry:
+                    entry.update_time = entry.updated_parsed
+                else:
+                    entry.update_time = localtime()
 
             for entry in sorted(parsed_feed.entries, key=lambda e: e.update_time):
                 publish_time = datetime.fromtimestamp(mktime(entry.update_time))
+
+                if not 'link' in entry:
+                    continue
 
                 if last_publish_time is None or last_publish_time < publish_time:
                     article_uri = entry.link
