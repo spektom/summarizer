@@ -1,7 +1,7 @@
 #!/bin/bash -eu
 
 [ ! -d venv ] && ./setup.sh
-if [ -z "${VIRTUAL_ENV}" ]; then
+if [ -z ${VIRTUAL_ENV+x} ]; then
   source venv/bin/activate
 fi
 
