@@ -1,0 +1,7 @@
+hardstatus alwayslastline "%-Lw%{= BW}%50>%n%f* %t%{-}%+Lw%<"
+
+screen -t firefox /bin/bash -c "cd firefox && ./firefox.sh"
+screen -t bot-api /bin/bash -c "cd bot && ./bot-api.sh"
+screen -t bot-listener /bin/bash -c "cd bot && ./bot-listener.sh"
+screen -t summarizer-api /bin/bash -c "cd summarizer && ./summarizer-api.sh"
+screen -t manager /bin/bash -c "cd manager && ./manager-app.sh"

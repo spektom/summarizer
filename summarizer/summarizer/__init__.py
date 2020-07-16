@@ -41,10 +41,17 @@ def run_in_parallel(func, objs):
         return pool.map(func, objs)
 
 
+SUBJ_DEP = set(['agent', 'csubj', 'csubjpass', 'expl', 'nsubj', 'nsubjpass'])
+AUX_DEP = set(['aux', 'auxpass'])
+
+
 def is_relevant_sentence(sentence):
     """Decides whether such a sentence is wanted in a summary"""
-    # Sentences must contain at least one verb
-    if next((t for t in sentence if t.pos_ == 'VERB'), None) is None:
+    # Sentence must have a subject with a verb
+    if next(
+        (subj for verb in sentence for subj in verb.lefts
+         if verb.pos_ == 'VERB' and verb.dep_ not in AUX_DEP and subj.dep_ in SUBJ_DEP),
+            None) is None:
         return False
 
     # Sentences must end with a dot
@@ -54,22 +61,18 @@ def is_relevant_sentence(sentence):
     return True
 
 
-def drop_irrelevant_sentences(sentences):
-    return [sent for sent in sentences if is_relevant_sentence(sent)]
-
-
-def drop_stop_words(doc):
-    return [
-        token for token in doc
-        if not token.is_stop and re.search(r'^[A-Za-z]{2,}', token.lemma_)
-    ]
-
-
 def clean_sentence(sentence):
     """Remove irrelevant elements from a sentence prior to building a summary"""
-
     sentence_pos = [t.pos_ for t in sentence]
     sentence_lemmas = [t.lemma_ for t in sentence]
+
+    # Drop any punctuation from the beginning (except for quotes)
+    start = 0
+    for tok in sentence:
+        if tok.pos_ != 'PUNCT' or tok.is_quote:
+            break
+        start += 1
+    sentence = sentence[start:]
 
     # Remove prefixes by lemmas
     for drop_prefix in [['on', 'top', 'of', 'that', ','], ['that', 'say', ',']]:
@@ -96,6 +99,17 @@ def clean_sentence(sentence):
         break
 
     return sentence
+
+
+def drop_irrelevant_sentences(sentences):
+    return [clean_sentence(sent) for sent in sentences if is_relevant_sentence(sent)]
+
+
+def drop_stop_words(doc):
+    return [
+        token for token in doc
+        if not token.is_stop and re.search(r'^[A-Za-z]{2,}', token.lemma_)
+    ]
 
 
 def clean_result(sentence):
