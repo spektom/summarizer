@@ -64,6 +64,7 @@ function createTaskContext(tabId, articleId) {
   taskContexts[tabId] = {
     state: 'created',
     articleId: articleId,
+    createdOnMillis: new Date().getTime(),
     dispose: () => {
       delete taskContexts[tabId];
       browser.tabs.remove(tabId);
@@ -71,9 +72,19 @@ function createTaskContext(tabId, articleId) {
   };
 }
 
+function cleanStaleTaskContexts() {
+  let nowMillis = new Date().getTime();
+  Object.values(taskContexts).forEach((taskContext) => {
+    if (taskContext.createdOnMillis + 100000 > nowMillis) {
+      taskContext.dispose()
+    }
+  });
+}
+
 function processNextUri() {
   if (Object.keys(taskContexts).length >= maxTasks) {
     log(`Max number of tabs (${maxTasks}) is open already`, 'WARN');
+    cleanStaleTaskContexts();
   } else {
     fetchNextUri((uri, articleId) => {
       log(`Received article #${articleId} to process: ${uri}`);
