@@ -5,4 +5,8 @@ if [ -z ${VIRTUAL_ENV+x} ]; then
   source venv/bin/activate
 fi
 
-env FLASK_APP=summarizer.api FLASK_RUN_PORT=6000 FLASK_RUN_THREADED=False flask run
+if [ "$(uname -p)" = "aarch64" ]; then
+  env="LD_PRELOAD=libgomp.so.1"
+fi
+
+env $env FLASK_APP=summarizer.api FLASK_RUN_PORT=6000 flask run
