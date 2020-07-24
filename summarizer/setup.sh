@@ -5,8 +5,10 @@ if [ -d venv ]; then
   exit
 fi
 
+trap "rm -rf venv" ERR
+
 python3 -mvenv venv
 source venv/bin/activate
 pip install wheel
-pip install -r requirements.txt
+BLIS_ARCH=generic pip install -r requirements.txt --no-binary=blis
 python -m spacy download en_core_web_lg

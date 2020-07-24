@@ -5,6 +5,8 @@ if [ -d venv ]; then
   exit
 fi
 
+trap "rm -rf venv" ERR
+
 python3 -mvenv venv
 source venv/bin/activate
 pip install wheel

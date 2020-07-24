@@ -1,16 +1,23 @@
 #!/bin/bash -eu
 
+# Only used in Linux, in Raspberry Pi it must be already installed (apt install firefox)
 FF_VERSION=79.0b5
 
 if [ -d firefox ]; then
   echo "WARNING: Directory firefox/ already exists. To rebuild, remove the directory, then re-run the script."
 else
-  echo "Downloading Firefox version ${FF_VERSION}"
-  # Developer edition is required to allow installing unsigned addons
-  wget -qc https://download-installer.cdn.mozilla.net/pub/devedition/releases/${FF_VERSION}/linux-x86_64/en-US/firefox-${FF_VERSION}.tar.bz2
+  if [ "$(uname -p)" = "aarch64" ]; then
+    # Raspberry Pi
+    cp -r /usr/lib/firefox .
+    [ -h firefox/distribution/extensions ] && rm -f firefox/distribution/extensions
+  else
+    echo "Downloading Firefox version ${FF_VERSION}"
+    # Developer edition is required to allow installing unsigned addons
+    wget -qc https://download-installer.cdn.mozilla.net/pub/devedition/releases/${FF_VERSION}/linux-x86_64/en-US/firefox-${FF_VERSION}.tar.bz2
 
-  echo "Extracting firefox-${FF_VERSION}.tar.bz2"
-  tar -jxf firefox-${FF_VERSION}.tar.bz2
+    echo "Extracting firefox-${FF_VERSION}.tar.bz2"
+    tar -jxf firefox-${FF_VERSION}.tar.bz2
+  fi
 
   echo "Configuring firefox"
   cp autoconfig.js firefox/defaults/pref/
