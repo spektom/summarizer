@@ -48,7 +48,11 @@ def publish_article(article):
 
 @app.route('/feeds/refresh', methods=['GET'])
 def feeds_refresh():
-    for feed in Feed.query.all():
+    # Read all feeds, and unlock the session
+    feeds = Feed.query.all()
+    db.session.expunge_all()
+
+    for feed in feeds:
         try:
             app.logger.info(f'Refreshing RSS feed: {feed.uri}')
             last_publish_time = feed.last_publish_time
@@ -112,6 +116,8 @@ def feeds_refresh():
 
                     last_publish_time = publish_time
 
+            # Update feed's properties
+            feed = Feed.query.get(feed.id)
             feed.last_publish_time = last_publish_time
             if hasattr(parsed_feed, 'etag'):
                 feed.etag = parsed_feed.etag
@@ -120,7 +126,6 @@ def feeds_refresh():
             db.session.commit()
 
         except:
-            db.session.rollback()
             app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
 
     return '', 204

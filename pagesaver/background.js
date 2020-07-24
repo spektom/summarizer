@@ -1,6 +1,6 @@
 let managerUri = 'http://localhost:5000';
 let maxTasks = 5;
-let taskFetchIntervalSecs = 10;
+let taskFetchIntervalSecs = 20;
 let taskContexts = {};
 
 function xhrGet(uri, callback) {
