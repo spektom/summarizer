@@ -21,6 +21,12 @@ def is_blacklisted(uri):
     return False
 
 
+def news_score(title):
+    r = requests.post('http://localhost:6000/newsscore', json={'title': title})
+    r.raise_for_status()
+    return r.json()['score']
+
+
 def publish_article(article):
     r = requests.post('http://localhost:6000/summarize',
                       json={
@@ -48,11 +54,7 @@ def publish_article(article):
 
 @app.route('/feeds/refresh', methods=['GET'])
 def feeds_refresh():
-    # Read all feeds, and unlock the session
-    feeds = Feed.query.all()
-    db.session.expunge_all()
-
-    for feed in feeds:
+    for feed in Feed.query.all():
         try:
             app.logger.info(f'Refreshing RSS feed: {feed.uri}')
             last_publish_time = feed.last_publish_time
@@ -95,6 +97,11 @@ def feeds_refresh():
                     if feed.is_aggregator and hasattr(entry, 'source'):
                         source = entry.source.title
 
+                    # Analyze the title, and see whether it worth adding the article
+                    if hasattr(entry, 'title') and news_score(entry.title) < 1:
+                        app.logger.info(f'Skipping non-news article: {article_uri}')
+                        continue
+
                     try:
                         app.logger.info(f'Adding new article: {article_uri}')
                         db.session.add(
@@ -117,7 +124,6 @@ def feeds_refresh():
                     last_publish_time = publish_time
 
             # Update feed's properties
-            feed = Feed.query.get(feed.id)
             feed.last_publish_time = last_publish_time
             if hasattr(parsed_feed, 'etag'):
                 feed.etag = parsed_feed.etag
@@ -126,6 +132,7 @@ def feeds_refresh():
             db.session.commit()
 
         except:
+            db.session.rollback()
             app.logger.exception(f'Failed to refresh RSS feed: {feed.uri}')
 
     return '', 204

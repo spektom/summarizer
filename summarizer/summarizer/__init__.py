@@ -9,12 +9,15 @@ import multiprocessing as mp
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+nlp = None
+
 
 def init_nlp():
     global nlp
-    model = 'en_core_web_lg'
-    logging.info(f'Loading NLP model: {model}')
-    nlp = spacy.load(model)
+    if nlp is None:
+        model = 'en_core_web_lg'
+        logging.info(f'Loading NLP model: {model}')
+        nlp = spacy.load(model)
 
 
 def html_to_text(html):
@@ -223,11 +226,25 @@ def create_summarizer(model_file='dtm.model'):
     logging.info(f'Loading model from file {model_file}')
     tfidf = joblib.load(model_file)
 
+    logging.info(f'Initializing summarizer')
     feature_names = tfidf.get_feature_names()
     feature_indices = {n: i for i, n in enumerate(feature_names)}
 
-    logging.info(f'Initializing summarizer')
     init_nlp()
 
     return lambda title, html, top_n: summarize(tfidf, feature_indices, title, html,
                                                 top_n)
+
+
+def news_score(title):
+    init_nlp()
+
+    doc = nlp(title)
+    lemmas = [t.lemma_ for t in doc]
+
+    score = 1
+
+    if lemmas[:2] == ['how', 'to']:
+        score /= 10
+
+    return score
