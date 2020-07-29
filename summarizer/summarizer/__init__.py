@@ -244,7 +244,10 @@ def news_score(title):
 
     score = 1
 
-    if lemmas[:2] == ['how', 'to']:
-        score /= 10
+    for i in range(len(doc)):
+        if lemmas[i:i + 2] == ['how', 'to'] and (i == 0 or doc[i - 1].pos_ == 'PUNCT'):
+            # Promotional "tutorials"
+            score /= 10
+            break
 
     return score
