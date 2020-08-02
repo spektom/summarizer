@@ -132,6 +132,24 @@ def clean_result(sentence):
     return text
 
 
+
+def is_news_title(title):
+    init_nlp()
+
+    doc = nlp(title)
+    lemmas = [t.lemma_ for t in doc]
+
+    if lemmas[0] == 'the' and doc[1].text == 'best':
+        return False
+
+    for i in range(len(doc)):
+        if lemmas[i:i + 2] == ['how', 'to'] and (i == 0 or doc[i - 1].pos_ == 'PUNCT'):
+            # Promotional "tutorials"
+            return False
+
+    return True
+
+
 def train_and_save(htmls, model_file='dtm.model'):
     init_nlp()
 
@@ -234,20 +252,3 @@ def create_summarizer(model_file='dtm.model'):
 
     return lambda title, html, top_n: summarize(tfidf, feature_indices, title, html,
                                                 top_n)
-
-
-def news_score(title):
-    init_nlp()
-
-    doc = nlp(title)
-    lemmas = [t.lemma_ for t in doc]
-
-    score = 1
-
-    for i in range(len(doc)):
-        if lemmas[i:i + 2] == ['how', 'to'] and (i == 0 or doc[i - 1].pos_ == 'PUNCT'):
-            # Promotional "tutorials"
-            score /= 10
-            break
-
-    return score

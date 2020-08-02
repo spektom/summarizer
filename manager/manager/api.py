@@ -21,10 +21,10 @@ def is_blacklisted(uri):
     return False
 
 
-def news_score(title):
-    r = requests.post('http://localhost:6000/newsscore', json={'title': title})
+def is_news_title(title):
+    r = requests.post('http://localhost:6000/isnewstitle', json={'title': title})
     r.raise_for_status()
-    return r.json()['score']
+    return r.json()['value']
 
 
 def publish_article(article):
@@ -98,7 +98,7 @@ def feeds_refresh():
                         source = entry.source.title
 
                     # Analyze the title, and see whether it worth adding the article
-                    if hasattr(entry, 'title') and news_score(entry.title) < 1:
+                    if hasattr(entry, 'title') and not is_news_title(entry.title):
                         app.logger.info(f'Skipping non-news article: {article_uri}')
                         continue
 

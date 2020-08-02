@@ -19,7 +19,7 @@ watchdog() {
     if ! kill -0 $FF_PID >/dev/null 2>&1; then
       echo "Firefox is down, starting again"
       run_firefox
-    elif [ $(($(date +%s) - $FF_START_TIME)) -gt 36000 ]; then # restart every 10 hrs
+    elif [ $(($(date +%s) - $FF_START_TIME)) -gt 18000 ]; then # restart every 5 hrs
       kill $FF_PID
     fi
   done

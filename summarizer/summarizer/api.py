@@ -1,7 +1,7 @@
 import logging
 
 from flask import request, jsonify, Flask
-from . import create_summarizer, news_score
+from . import create_summarizer, is_news_title
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(module)s: %(message)s')
@@ -19,6 +19,6 @@ def summarize():
     })
 
 
-@app.route('/newsscore', methods=['POST'])
+@app.route('/isnewstitle', methods=['POST'])
 def newsscore():
-    return jsonify({'score': news_score(request.json['title'])})
+    return jsonify({'value': is_news_title(request.json['title'])})
