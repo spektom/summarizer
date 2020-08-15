@@ -132,19 +132,27 @@ def clean_result(sentence):
     return text
 
 
-
 def is_news_title(title):
     init_nlp()
 
     doc = nlp(title)
     lemmas = [t.lemma_ for t in doc]
 
+    if len(doc) < 2:
+        return False
+
     if lemmas[0] == 'the' and doc[1].text == 'best':
+        return False
+
+    if lemmas[0] == 'save' and doc[1].pos_ == 'SYM':
         return False
 
     for i in range(len(doc)):
         if lemmas[i:i + 2] == ['how', 'to'] and (i == 0 or doc[i - 1].pos_ == 'PUNCT'):
             # Promotional "tutorials"
+            return False
+
+        if doc[i].pos_ == 'NUM' and lemmas[i + 1:i + 3] == ['%', 'discount']:
             return False
 
     return True
