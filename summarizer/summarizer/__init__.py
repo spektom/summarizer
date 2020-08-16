@@ -147,12 +147,15 @@ def is_news_title(title):
     if lemmas[0] == 'save' and doc[1].pos_ == 'SYM':
         return False
 
-    for i in range(len(doc)):
+    for i in range(len(doc) - 1):
         if lemmas[i:i + 2] == ['how', 'to'] and (i == 0 or doc[i - 1].pos_ == 'PUNCT'):
             # Promotional "tutorials"
             return False
 
         if doc[i].pos_ == 'NUM' and lemmas[i + 1:i + 3] == ['%', 'discount']:
+            return False
+
+        if doc[i].pos_ == 'SYM' and doc[i + 1].pos_ == 'NUM' and 'deal' in lemmas:
             return False
 
     return True
