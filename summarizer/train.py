@@ -3,7 +3,7 @@
 import logging
 import sqlite3
 
-from summarizer import train_and_save
+from summarizer.nlp import train_and_save
 
 
 def read_articles():

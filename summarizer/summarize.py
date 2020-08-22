@@ -4,7 +4,7 @@ import logging
 import sqlite3
 import sys
 
-from summarizer import create_summarizer
+from summarizer.nlp import create_summarizer
 
 
 def read_article(id):

@@ -12,5 +12,5 @@ app = Flask(__name__)
 @app.route('/summary', methods=['POST'])
 def summary():
     send_to_editors(request.json['source'], request.json['uri'], request.json['title'],
-                    request.json['summary'])
+                    request.json['summary'], request.json.get('importance', 0))
     return '', 200

@@ -12,6 +12,8 @@ from .app import app, db
 from .model import Feed, Article
 
 feedparser.USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0'
+summarizer_url = 'http://localhost:6000'
+bot_url = 'http://localhost:7000'
 
 
 def is_blacklisted(uri):
@@ -22,19 +24,21 @@ def is_blacklisted(uri):
 
 
 def is_news_title(title):
-    r = requests.post('http://localhost:6000/isnewstitle', json={'title': title})
+    r = requests.post(f'{summarizer_url}/isnewstitle', json={'title': title})
     r.raise_for_status()
     return r.json()['value']
 
 
 def publish_article(article):
-    r = requests.post('http://localhost:6000/summarize',
+    r = requests.post(f'{summarizer_url}/summarize',
                       json={
+                          'id': article.id,
                           'title': article.title,
-                          'html': article.html
+                          'html': article.html,
+                          'create_time': article.create_time.isoformat()
                       })
     r.raise_for_status()
-    summary = r.json()['summary']
+    res = r.json()
 
     source = 'Anonymous'
     if article.source is not None:
@@ -42,12 +46,16 @@ def publish_article(article):
     elif article.feed_id is not None:
         source = Feed.query.get(article.feed_id).name
 
-    r = requests.post('http://localhost:7000/summary',
+    # Calculate article importance based on number of similar titles during last 12 hours
+    importance = len([score for score in res['similar_titles'] if score > 0.8])
+
+    r = requests.post(f'{bot_url}/summary',
                       json={
                           'source': source,
                           'title': article.title,
                           'uri': article.uri,
-                          'summary': summary
+                          'summary': res['summary'],
+                          'importance': importance
                       })
     r.raise_for_status()
 
