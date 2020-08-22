@@ -12,8 +12,9 @@ def send_to_editors(source, uri, title, summary, importance):
     summary_text = '\n'.join([f'— {sentence}' for sentence in summary])
     message = f'<b>{title}</b>\n\n{summary_text}\n\n<a href="{uri}"><i>{source}</i></a>'
 
+    thumbs = '\U0001F44D' * importance
     reply_markup = InlineKeyboardMarkup(
-        [[InlineKeyboardButton(f'Promote ({importance})', callback_data='promote')]])
+        [[InlineKeyboardButton(f'Promote {thumbs}', callback_data='promote')]])
 
     bot.send_message(chat_id=-1001306868978,
                      parse_mode='html',
