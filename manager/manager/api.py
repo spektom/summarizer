@@ -46,8 +46,8 @@ def publish_article(article):
     elif article.feed_id is not None:
         source = Feed.query.get(article.feed_id).name
 
-    # Calculate article importance based on number of similar titles during last 12 hours
-    importance = len([score for score in res['similar_titles'] if score > 0.8])
+    # Calculate article importance based on number of similar articles during last 12 hours
+    importance = len([score for score in res['similar_articles'] if score > 0.8])
 
     r = requests.post(f'{bot_url}/summary',
                       json={
