@@ -1,34 +1,61 @@
 import heapq
 
 from datetime import timedelta, datetime
-from . import get_nlp
+from lru import LRU
+
 from .app import app, db
 from .model import RecentArticle
-from .nlp import drop_stop_words
+
+
+class TFIDFScorer(object):
+    def __init__(self, lifetime=timedelta(hours=12)):
+        self.lifetime = lifetime
+        self.words = LRU(10000)
+        self.recent = []
+        app.logger.info('Loading recent documents')
+        for r in RecentArticle.query.all():
+            word_vec = self.get_word_vec_(r.text)
+            heapq.heappush(self.recent, (r.create_time, r.id, word_vec))
+
+    def get_word_vec_(self, text):
+        word_vec = set()
+        for word in text.split():
+            if word in self.words:
+                idx = self.words[word]
+            else:
+                self.words[word] = idx = len(self.words)
+            word_vec.add(idx)
+        return word_vec
+
+    def get_similarity_score_(self, vec1, vec2):
+        same_count = 0
+        for n in vec1:
+            if n in vec2:
+                same_count += 1
+        min_len = min(len(vec1), len(vec2))
+        return same_count / min_len if min_len > 0 else 0
+
+    def add_get_score(self, id, text, create_time):
+        word_vec = self.get_word_vec_(text)
+
+        scores = [
+            self.get_similarity_score_(r[2], word_vec) for r in self.recent
+            if r[1] != id
+        ]
+
+        if RecentArticle.query.get(id) is None:
+            db.session.add(RecentArticle(id=id, create_time=create_time, text=text))
+            db.session.commit()
+
+            heapq.heappush(self.recent, (create_time, id, text))
+            while len(self.recent) > 0 \
+                    and self.recent[0][0] <= datetime.utcnow() - self.lifetime:
+                heapq.heappop(self.recent)
+
+        return scores
 
 
 def create_similar_articles_scorer(lifetime=timedelta(hours=12)):
-    nlp = get_nlp()
-    recent_articles = [
-        (r.create_time, r.id, nlp(r.article)) for r in RecentArticle.query.filter(
-            RecentArticle.create_time > datetime.utcnow() - lifetime).all()
-    ]
-    heapq.heapify(recent_articles)
-
-    def score_article(id, text, create_time):
-        doc = nlp(' '.join([t.lemma_ for t in drop_stop_words(nlp(text))]))
-        scores = [doc.similarity(r[2]) for r in recent_articles if r[1] != id]
-        if RecentArticle.query.get(id) is None:
-            db.session.add(
-                RecentArticle(id=id,
-                              create_time=create_time,
-                              text=' '.join([t.lemma_ for t in doc])))
-            db.session.commit()
-
-            heapq.heappush(recent_articles, (create_time, id, doc))
-            while len(recent_articles) > 0 \
-                    and recent_articles[0][0] <= datetime.utcnow() - lifetime:
-                heapq.heappop(recent_articles)
-        return scores
-
-    return score_article
+    tfidf_scorer = TFIDFScorer()
+    return lambda id, text, create_time: tfidf_scorer.add_get_score(
+        id, text, create_time)
