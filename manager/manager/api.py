@@ -47,7 +47,6 @@ def publish_article(article):
         source = Feed.query.get(article.feed_id).name
 
     # Calculate article importance based on number of similar articles during last 12 hours
-    app.logger.info(max(res["similar_articles"]))
     importance = len([score for score in res['similar_articles'] if score > 0.7])
 
     r = requests.post(f'{bot_url}/summary',
