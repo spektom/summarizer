@@ -10,7 +10,8 @@ class JaccardSimilarity(object):
         self.lifetime = lifetime
         self.recent = []
         app.logger.info('Loading recent documents')
-        for r in RecentArticle.query.all():
+        for r in RecentArticle.query.filter(
+                RecentArticle.create_time > datetime.utcnow() - lifetime).all():
             heapq.heappush(self.recent, (r.create_time, r.id, set(r.text.split())))
 
     def get_similarity_score_(self, s1, s2):
