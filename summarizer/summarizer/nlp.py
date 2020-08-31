@@ -214,7 +214,7 @@ def summarize(tfidf, feature_indices, title, html, top_n):
                 result.append((index, sentence))
                 seen.add(sentence)
     result = [s for _, s in sorted(result, key=lambda x: x[0])]
-    return result, doc_for_train
+    return result
 
 
 def create_summarizer(model_file='dtm.model'):

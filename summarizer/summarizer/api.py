@@ -19,10 +19,10 @@ def summarize():
     create_time = datetime.strptime(
         request.json.get('create_time',
                          datetime.utcnow().isoformat()), '%Y-%m-%dT%H:%M:%S.%f')
-    summary, clean_text = make_summary(title, html, topN)
+    summary = make_summary(title, html, topN)
     return jsonify({
         'summary': summary,
-        'similar_articles': similar_articles_score(id, clean_text, create_time)
+        'similar_articles': similar_articles_score(id, title, create_time)
     })
 
 
