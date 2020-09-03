@@ -15,6 +15,7 @@ def summarize():
     id = request.json['id']
     title = request.json['title']
     html = request.json['html']
+    uri = request.json['uri']
     topN = request.json.get('top_n', 4)
     create_time = datetime.strptime(
         request.json.get('create_time',
@@ -22,7 +23,7 @@ def summarize():
     summary = make_summary(title, html, topN)
     return jsonify({
         'summary': summary,
-        'similar_articles': similar_articles_score(id, title, create_time)
+        'similar_articles': similar_articles_score(id, title, uri, create_time)
     })
 
 
