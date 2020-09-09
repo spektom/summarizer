@@ -106,27 +106,49 @@ def clean_result(sentence):
 def is_news_title(title):
     nlp = get_nlp()
     doc = nlp(title)
-    lemmas = [t.lemma_ for t in doc]
 
     if len(doc) < 2:
         return False
 
-    if lemmas[0] == 'the' and doc[1].text == 'best':
-        return False
+    def T(text):
+        return lambda i: doc[i].text == text
 
-    if lemmas[0] == 'save' and doc[1].pos_ == 'SYM':
-        return False
+    def L(lemma):
+        return lambda i: doc[i].lemma_ == lemma
 
-    for i in range(len(doc) - 1):
-        if lemmas[i:i + 2] == ['how', 'to'] and (i == 0 or doc[i - 1].pos_ == 'PUNCT'):
-            # Promotional "tutorials"
-            return False
+    def P(pos):
+        return lambda i: doc[i].pos_ == pos
 
-        if doc[i].pos_ == 'NUM' and lemmas[i + 1:i + 3] == ['%', 'discount']:
-            return False
+    # Prohibited title prefixes
+    blacklist_0 = [
+        [L('the'), T('best')],
+        [L('save'), P('SYM')],
+        [L('how'), L('to')],
+    ]
 
-        if doc[i].pos_ == 'SYM' and doc[i + 1].pos_ == 'NUM' and 'deal' in lemmas:
-            return False
+    # Prohibited sequences in any position in a title
+    blacklist = [
+        [L('deal'), L('of'), L('the'), L('day')],
+        [L('deal'), L('of'), L('the'), L('week')],
+        [P('PUNCT'), L('how'), L('to')],
+        [P('NUM'), L('%'), L('discount')],
+    ]
+
+    # Conditional blacklist items
+    lemmas = [t.lemma_ for t in doc]
+    if 'deal' in lemmas:
+        blacklist.append([P('SYM'), P('NUM')])
+
+    # Find blacklisted terms
+    for i in range(len(doc) - 2):
+        bl = blacklist_0 + blacklist if i == 0 else blacklist
+        for terms in bl:
+            if len(terms) + i <= len(doc):
+                for j in range(len(terms)):
+                    if not terms[j](i + j):
+                        break
+                else:
+                    return False
 
     return True
 
