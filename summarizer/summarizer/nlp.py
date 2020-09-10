@@ -11,7 +11,7 @@ from . import get_nlp
 
 
 def run_in_parallel(func, objs):
-    with mp.Pool() as pool:
+    with mp.Pool(4) as pool:
         return pool.map(func, objs)
 
 
@@ -153,6 +153,11 @@ def is_news_title(title):
     return True
 
 
+def prepare_doc_for_training(doc):
+    sents = drop_irrelevant_sentences(doc.sents)
+    return ' '.join([token.lemma_ for sent in sents for token in drop_stop_words(sent)])
+
+
 def train_and_save(htmls, model_file='dtm.model'):
     nlp = get_nlp()
     logging.info('Started procesing %d documents', len(htmls))
@@ -164,11 +169,7 @@ def train_and_save(htmls, model_file='dtm.model'):
     docs = nlp.pipe(texts, batch_size=100, n_process=mp.cpu_count())
 
     logging.info('Removing stop words')
-    docs_sents = run_in_parallel(lambda doc: drop_irrelevant_sentences(doc.sents), docs)
-    docs_for_train = run_in_parallel(
-        lambda doc_sents: ' '.join(
-            [token.lemma_ for sent in doc_sents for token in drop_stop_words(sent)]),
-        docs_sents)
+    docs_for_train = run_in_parallel(prepare_doc_for_training, docs)
 
     logging.info('Started building document-term matrix')
     tfidf = TfidfVectorizer()
