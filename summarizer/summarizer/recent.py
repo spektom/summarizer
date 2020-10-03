@@ -33,7 +33,7 @@ class JaccardSimilarity(object):
         return len(i) / (len(s1) + len(s2) - len(i))
 
     def add_get_score(self, id, title, uri, create_time):
-        words_set = title_to_wordset_(title)
+        words_set = self.title_to_wordset_(title)
         site = urlparse(uri).hostname
 
         scores = [
