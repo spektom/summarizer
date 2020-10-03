@@ -15,7 +15,6 @@ class JaccardSimilarity(object):
         self.recent = []
 
         app.logger.info('Loading recent documents')
-        nlp = get_nlp()
         for r in RecentArticle.query.filter(
                 RecentArticle.create_time > datetime.utcnow() - lifetime).all():
             heapq.heappush(
@@ -23,6 +22,7 @@ class JaccardSimilarity(object):
                 (r.create_time, r.id, self.title_to_wordset_(r.title), r.site))
 
     def title_to_wordset_(self, title):
+        nlp = get_nlp()
         return set([
             t.lemma_ for t in drop_stop_words(nlp(title)) if t.pos_ == 'VERB' or (
                 t.pos_ == 'PROPN' and t.ent_type_ in ['ORG', 'PERSON', 'PRODUCT'])
@@ -33,8 +33,6 @@ class JaccardSimilarity(object):
         return len(i) / (len(s1) + len(s2) - len(i))
 
     def add_get_score(self, id, title, uri, create_time):
-        nlp = get_nlp()
-
         words_set = title_to_wordset_(title)
         site = urlparse(uri).hostname
 
