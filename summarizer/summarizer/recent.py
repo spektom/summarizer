@@ -13,6 +13,7 @@ class JaccardSimilarity(object):
     def __init__(self, lifetime=timedelta(hours=12)):
         self.lifetime = lifetime
         self.recent = []
+        self.nlp = get_nlp()
 
         app.logger.info('Loading recent documents')
         for r in RecentArticle.query.filter(
@@ -22,13 +23,11 @@ class JaccardSimilarity(object):
                 (r.create_time, r.id, self.title_to_wordset_(r.title), r.site))
 
     def title_to_wordset_(self, title):
-        nlp = get_nlp()
-        return set([
-            t.lemma_ for t in drop_stop_words(nlp(title)) if t.pos_ == 'VERB' or (
-                t.pos_ == 'PROPN' and t.ent_type_ in ['ORG', 'PERSON', 'PRODUCT'])
-        ])
+        return set([t.lemma_ for t in drop_stop_words(self.nlp(title))])
 
     def get_similarity_score_(self, s1, s2):
+        if len(s1) == 0 or len(s2) == 0:
+            return 0
         i = s1.intersection(s2)
         return len(i) / (len(s1) + len(s2) - len(i))
 
