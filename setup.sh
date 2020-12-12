@@ -13,6 +13,6 @@ sudo apt-get install -y \
   libxslt-dev \
 	zip
 
-for setup in $(ls */setup.sh); do
-  $setup
+for f in $(ls */setup.sh); do
+  (cd $(dirname $f); ./setup.sh)
 done

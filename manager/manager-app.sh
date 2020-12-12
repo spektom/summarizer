@@ -36,4 +36,15 @@ if [ -z ${VIRTUAL_ENV+x} ]; then
   source venv/bin/activate
 fi
 
+while true
+do
+  if ! curl -sS http://localhost:6000 >/dev/null 2>&1
+  then
+    echo "Summarizer API is not running... will retry in 3s"
+    sleep 3
+  else
+    break
+  fi
+done
+
 env FLASK_APP=manager.app flask run
