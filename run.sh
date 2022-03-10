@@ -1,3 +1,3 @@
 #!/bin/bash
 
-screen -c ./screenrc
+screen -S summarizer -c ./screenrc
